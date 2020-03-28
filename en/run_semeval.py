@@ -2,9 +2,9 @@ import os
 import time
 import argparse
 import yaml
-from ALBERT import classifier_utils
-from ALBERT import fine_tuning_utils
-from ALBERT import modeling
+from albert import classifier_utils
+from albert import fine_tuning_utils
+from albert import modeling
 from preprocessing import SemEval
 import tensorflow.compat.v1 as tf
 from tensorflow.contrib import cluster_resolver as contrib_cluster_resolver
@@ -461,5 +461,7 @@ if __name__ == "__main__":
         default="./config.yaml",
         type=str,
     )
+    args = parser.parse_args()
+    config = {}
     with open(args.config_file, "r") as stream:
         config = {**config, **yaml.safe_load(stream)}

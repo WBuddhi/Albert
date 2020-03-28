@@ -2,7 +2,7 @@ import pandas as pd
 import os
 from pathlib import Path
 from sklearn.model_selection import train_test_split
-from ALBERT.classifier_utils import DataProcessor, InputExample
+from albert.classifier_utils import DataProcessor, InputExample
 
 
 class SemEval(DataProcessor):
