@@ -9,21 +9,22 @@ class SemEval(DataProcessor):
     def __init__(self, config):
         DataProcessor.__init__(
             self,
-            use_spm=True if config.get(["spm_model_file"], None) else False,
-            do_lower_case=config.get(["do_lower_case"], True),
+            use_spm=True if config.get("spm_model_file", None) else False,
+            do_lower_case=config.get("do_lower_case", True),
         )
+        data_dir = config.get("data_dir", None)
         train_path = os.path.join(data_dir, "train.csv")
         test_path = os.path.join(data_dir, "test.csv")
-        train_df = _load_df(train_path)
+        train_df = self._load_df(train_path)
         split = config.get("split", None)
         if split:
             self.train_df, self.val_df = train_test_split(
-                train_df, split=split
+                train_df, test_size=split
             )
         else:
             self.train_df = train_df
             self.val_df = None
-        self.test_df = _load_df(test_path)
+        self.test_df = self._load_df(test_path)
 
     def get_train_examples(self, **kwargs):
         return self._create_examples(self.train_df)
@@ -33,6 +34,9 @@ class SemEval(DataProcessor):
 
     def get_test_examples(self, **kwargs):
         return self._create_examples(self.test)
+    
+    def get_labels(self):
+        return ["0","1"]
 
     def _create_examples(self, df):
         examples = []

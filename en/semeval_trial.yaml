@@ -1,10 +1,12 @@
 # Local directories
-data_dir: /home/buddhi/Albert/en/Data/SemEval2012
-output_dir: /home/buddhi/Albert/en/Data/Output
-cached_dir: /home/buddhi/Albert/en/Data/cached
+task_name: SemEval
+data_dir: /home/buddhi/MachineLearning/Albert/en/Data/SemEval2012
+output_dir: /home/buddhi/MachineLearning/Albert/en/Data/Output
+cached_dir: /home/buddhi/MachineLearning/Albert/en/Data/cached
 # Model hub url
 albert_hub_module_handle: https://tfhub.dev/google/albert_base/3
 # Training params
+spm_model_file: True
 split: 0.25
 do_train: true
 do_eval: true

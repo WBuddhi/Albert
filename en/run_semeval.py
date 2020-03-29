@@ -15,128 +15,128 @@ def fine_tune_albert(config):
     tf.logging.set_verbosity(tf.logging.INFO)
 
     if (
-        not config.get(["do_train"], False)
-        and not config.get(["do_eval"], False)
-        and not config.get(["do_predict"], False)
+        not config.get("do_train", False)
+        and not config.get("do_eval", False)
+        and not config.get("do_predict", False)
     ):
         raise ValueError(
             "At least one of `do_train`, `do_eval` or `do_predict' must be True."
         )
 
-    if not config.get(["albert_config_file"], None) and not config.get(
-        ["albert_hub_module_handle"], None
+    if not config.get("albert_config_file", None) and not config.get(
+        "albert_hub_module_handle", None
     ):
         raise ValueError(
             "At least one of `--albert_config_file` and "
             "`--albert_hub_module_handle` must be set"
         )
 
-    if config.get(["albert_config_file"], None):
+    if config.get("albert_config_file", None):
         albert_config = modeling.AlbertConfig.from_json_file(
-            config.get(["albert_config_file"], None)
+            config.get("albert_config_file", None)
         )
         if (
-            config.get(["max_seq_length"], 512)
+            config.get("max_seq_length", 512)
             > albert_config.max_position_embeddings
         ):
             raise ValueError(
                 "Cannot use sequence length %d because the ALBERT model "
                 "was only trained up to sequence length %d"
                 % (
-                    config.get(["max_seq_length"], 512),
+                    config.get("max_seq_length", 512),
                     albert_config.max_position_embeddings,
                 )
             )
     else:
         albert_config = None  # Get the config from TF-Hub.
 
-    tf.gfile.MakeDirs(config.get(["output_dir"], None))
+    tf.gfile.MakeDirs(config.get("output_dir", None))
 
-    task_name = config.get(["task_name"], None).lower()
+    task_name = config.get("task_name", None).lower()
 
     processor = SemEval(config)
     label_list = processor.get_labels()
 
     tokenizer = fine_tuning_utils.create_vocab(
-        vocab_file=config.get(["vocab_file"], None),
-        do_lower_case=config.get(["do_lower_case"], True),
-        spm_model_file=config.get(["spm_model_file"], None),
-        hub_module=config.get(["albert_hub_module_handle"], None),
+        vocab_file=config.get("vocab_file", None),
+        do_lower_case=config.get("do_lower_case", True),
+        spm_model_file=config.get("spm_model_file", None),
+        hub_module=config.get("albert_hub_module_handle", None),
     )
 
     tpu_cluster_resolver = None
-    if config.get(["use_tpu"], False) and config.get(["tpu_name"], None):
+    if config.get("use_tpu", False) and config.get("tpu_name", None):
         tpu_cluster_resolver = contrib_cluster_resolver.TPUClusterResolver(
-            config.get(["tpu_name"], None),
-            zone=config.get(["tpu_zone"], None),
-            project=config.get(["gcp_project"], None),
+            config.get("tpu_name", None),
+            zone=config.get("tpu_zone", None),
+            project=config.get("gcp_project", None),
         )
 
     is_per_host = contrib_tpu.InputPipelineConfig.PER_HOST_V2
-    if config.get(["do_train"], False):
+    if config.get("do_train", False):
         iterations_per_loop = int(
             min(
-                config.get(["iterations_per_loop"], 1000),
-                config.get(["save_checkpoints_steps"], 1000),
+                config.get("iterations_per_loop", 1000),
+                config.get("save_checkpoints_steps", 1000),
             )
         )
     else:
-        iterations_per_loop = config.get(["iterations_per_loop"], 1000)
+        iterations_per_loop = config.get("iterations_per_loop", 1000)
     run_config = contrib_tpu.RunConfig(
         cluster=tpu_cluster_resolver,
-        master=config.get(["master"], None),
-        model_dir=config.get(["output_dir"], None),
+        master=config.get("master", None),
+        model_dir=config.get("output_dir", None),
         save_checkpoints_steps=int(
-            config.get(["save_checkpoints_steps"], 1000)
+            config.get("save_checkpoints_steps", 1000)
         ),
         keep_checkpoint_max=0,
         tpu_config=contrib_tpu.TPUConfig(
             iterations_per_loop=iterations_per_loop,
-            num_shards=config.get(["num_tpu_cores"], 8),
+            num_shards=config.get("num_tpu_cores", 8),
             per_host_input_for_training=is_per_host,
         ),
     )
 
     train_examples = None
-    if config.get(["do_train"], False):
+    if config.get("do_train", False):
         train_examples = processor.get_train_examples(
-            config.get(["data_dir"], None)
+            config.get("data_dir", None)
         )
     model_fn = classifier_utils.model_fn_builder(
         albert_config=albert_config,
         num_labels=len(label_list),
-        init_checkpoint=config.get(["init_checkpoint"], None),
-        learning_rate=config.get(["learning_rate"], 5e-5),
-        num_train_steps=config.get(["train_step"], 1000),
-        num_warmup_steps=config.get(["warmup_step"], 0),
-        use_tpu=config.get(["use_tpu"], False),
-        use_one_hot_embeddings=config.get(["use_tpu"], False),
+        init_checkpoint=config.get("init_checkpoint", None),
+        learning_rate=config.get("learning_rate", 5e-5),
+        num_train_steps=config.get("train_step", 1000),
+        num_warmup_steps=config.get("warmup_step", 0),
+        use_tpu=config.get("use_tpu", False),
+        use_one_hot_embeddings=config.get("use_tpu", False),
         task_name=task_name,
-        hub_module=config.get(["albert_hub_module_handle"], None),
-        optimizer=config.get(["optimizer"], None),
+        hub_module=config.get("albert_hub_module_handle", None),
+        optimizer=config.get("optimizer", None),
     )
 
     # If TPU is not available, this will fall back to normal Estimator on CPU
     # or GPU.
     estimator = contrib_tpu.TPUEstimator(
-        use_tpu=config.get(["use_tpu"], False),
+        use_tpu=config.get("use_tpu", False),
         model_fn=model_fn,
         config=run_config,
-        train_batch_size=config.get(["train_batch_size"], 32),
-        eval_batch_size=config.get(["eval_batch_size"], 8),
-        predict_batch_size=config.get(["predict_batch_size"], 8),
+        train_batch_size=config.get("train_batch_size", 32),
+        eval_batch_size=config.get("eval_batch_size", 8),
+        predict_batch_size=config.get("predict_batch_size", 8),
     )
 
-    if config.get(["do_train"], False):
-        cached_dir = config.get(["cached_dir"], None)
+    if config.get("do_train", False):
+        cached_dir = config.get("cached_dir", None)
         if not cached_dir:
-            cached_dir = config.get(["output_dir"], None)
+            cached_dir = config.get("output_dir", None)
         train_file = os.path.join(cached_dir, task_name + "_train.tf_record")
         if not tf.gfile.Exists(train_file):
             classifier_utils.file_based_convert_examples_to_features(
                 train_examples,
                 label_list,
-                config.get(["max_seq_length"], 512),
+                config.get("max_seq_length", 512),
                 tokenizer,
                 train_file,
                 task_name,
@@ -144,45 +144,45 @@ def fine_tune_albert(config):
         tf.logging.info("***** Running training *****")
         tf.logging.info("  Num examples = %d", len(train_examples))
         tf.logging.info(
-            "  Batch size = %d", config.get(["train_batch_size"], 32)
+            "  Batch size = %d", config.get("train_batch_size", 32)
         )
-        tf.logging.info("  Num steps = %d", config.get(["train_step"], 1000))
+        tf.logging.info("  Num steps = %d", config.get("train_step", 1000))
         train_input_fn = classifier_utils.file_based_input_fn_builder(
             input_file=train_file,
-            seq_length=config.get(["max_seq_length"], 512),
+            seq_length=config.get("max_seq_length", 512),
             is_training=True,
             drop_remainder=True,
             task_name=task_name,
-            use_tpu=config.get(["use_tpu"], False),
-            bsz=config.get(["train_batch_size"], 32),
+            use_tpu=config.get("use_tpu", False),
+            bsz=config.get("train_batch_size", 32),
         )
         estimator.train(
-            input_fn=train_input_fn, max_steps=config.get(["train_step"], 1000)
+            input_fn=train_input_fn, max_steps=config.get("train_step", 1000)
         )
 
-    if config.get(["do_eval"], False):
+    if config.get("do_eval", False):
         eval_examples = processor.get_dev_examples(
-            config.get(["data_dir"], None)
+            config.get("data_dir", None)
         )
         num_actual_eval_examples = len(eval_examples)
-        if config.get(["use_tpu"], False):
+        if config.get("use_tpu", False):
             # TPU requires a fixed batch size for all batches, therefore the number
             # of examples must be a multiple of the batch size, or else examples
             # will get dropped. So we pad with fake examples which are ignored
             # later on. These do NOT count towards the metric (all tf.metrics
             # support a per-instance weight, and these get a weight of 0.0).
-            while len(eval_examples) % config.get(["eval_batch_size"], 8) != 0:
+            while len(eval_examples) % config.get("eval_batch_size", 8) != 0:
                 eval_examples.append(classifier_utils.PaddingInputExample())
 
-        cached_dir = config.get(["cached_dir"], None)
+        cached_dir = config.get("cached_dir", None)
         if not cached_dir:
-            cached_dir = config.get(["output_dir"], None)
+            cached_dir = config.get("output_dir", None)
         eval_file = os.path.join(cached_dir, task_name + "_eval.tf_record")
         if not tf.gfile.Exists(eval_file):
             classifier_utils.file_based_convert_examples_to_features(
                 eval_examples,
                 label_list,
-                config.get(["max_seq_length"], 512),
+                config.get("max_seq_length", 512),
                 tokenizer,
                 eval_file,
                 task_name,
@@ -196,32 +196,32 @@ def fine_tune_albert(config):
             len(eval_examples) - num_actual_eval_examples,
         )
         tf.logging.info(
-            "  Batch size = %d", config.get(["eval_batch_size"], 8)
+            "  Batch size = %d", config.get("eval_batch_size", 8)
         )
 
         # This tells the estimator to run through the entire set.
         eval_steps = None
         # However, if running eval on the TPU, you will need to specify the
         # number of steps.
-        if config.get(["use_tpu"], False):
-            assert len(eval_examples) % config.get(["eval_batch_size"], 8) == 0
+        if config.get("use_tpu", False):
+            assert len(eval_examples) % config.get("eval_batch_size", 8) == 0
             eval_steps = int(
-                len(eval_examples) // config.get(["eval_batch_size"], 8)
+                len(eval_examples) // config.get("eval_batch_size", 8)
             )
 
-        eval_drop_remainder = True if config.get(["use_tpu"], False) else False
+        eval_drop_remainder = True if config.get("use_tpu", False) else False
         eval_input_fn = classifier_utils.file_based_input_fn_builder(
             input_file=eval_file,
-            seq_length=config.get(["max_seq_length"], 512),
+            seq_length=config.get("max_seq_length", 512),
             is_training=False,
             drop_remainder=eval_drop_remainder,
             task_name=task_name,
-            use_tpu=config.get(["use_tpu"], False),
-            bsz=config.get(["eval_batch_size"], 8),
+            use_tpu=config.get("use_tpu", False),
+            bsz=config.get("eval_batch_size", 8),
         )
 
         best_trial_info_file = os.path.join(
-            config.get(["output_dir"], None), "best_trial.txt"
+            config.get("output_dir", None), "best_trial.txt"
         )
 
         def _best_trial_info():
@@ -257,7 +257,7 @@ def fine_tune_albert(config):
 
         def _find_valid_cands(curr_step):
             filenames = tf.gfile.ListDirectory(
-                config.get(["output_dir"], None)
+                config.get("output_dir", None)
             )
             candidates = []
             for filename in filenames:
@@ -269,7 +269,7 @@ def fine_tune_albert(config):
             return candidates
 
         output_eval_file = os.path.join(
-            config.get(["output_dir"], None), "eval_results.txt"
+            config.get("output_dir", None), "eval_results.txt"
         )
 
         if task_name == "sts-b":
@@ -281,16 +281,16 @@ def fine_tune_albert(config):
 
         global_step, best_perf_global_step, best_perf = _best_trial_info()
         writer = tf.gfile.GFile(output_eval_file, "w")
-        while global_step < config.get(["train_step"], 1000):
+        while global_step < config.get("train_step", 1000):
             steps_and_files = {}
             filenames = tf.gfile.ListDirectory(
-                config.get(["output_dir"], None)
+                config.get("output_dir", None)
             )
             for filename in filenames:
                 if filename.endswith(".index"):
                     ckpt_name = filename[:-6]
                     cur_filename = os.path.join(
-                        config.get(["output_dir"], None), ckpt_name
+                        config.get("output_dir", None), ckpt_name
                     )
                     if cur_filename.split("-")[-1] == "best":
                         continue
@@ -351,34 +351,34 @@ def fine_tune_albert(config):
             tgt_ckpt = "model.ckpt-best.{}".format(ext)
             tf.logging.info("saving {} to {}".format(src_ckpt, tgt_ckpt))
             tf.io.gfile.rename(
-                os.path.join(config.get(["output_dir"], None), src_ckpt),
-                os.path.join(config.get(["output_dir"], None), tgt_ckpt),
+                os.path.join(config.get("output_dir", None), src_ckpt),
+                os.path.join(config.get("output_dir", None), tgt_ckpt),
                 overwrite=True,
             )
 
-    if config.get(["do_predict"], False):
+    if config.get("do_predict", False):
         predict_examples = processor.get_test_examples(
-            config.get(["data_dir"], None)
+            config.get("data_dir", None)
         )
         num_actual_predict_examples = len(predict_examples)
-        if config.get(["use_tpu"], False):
+        if config.get("use_tpu", False):
             # TPU requires a fixed batch size for all batches, therefore the number
             # of examples must be a multiple of the batch size, or else examples
             # will get dropped. So we pad with fake examples which are ignored
             # later on.
             while (
-                len(predict_examples) % config.get(["predict_batch_size"], 8)
+                len(predict_examples) % config.get("predict_batch_size", 8)
                 != 0
             ):
                 predict_examples.append(classifier_utils.PaddingInputExample())
 
         predict_file = os.path.join(
-            config.get(["output_dir"], None), "predict.tf_record"
+            config.get("output_dir", None), "predict.tf_record"
         )
         classifier_utils.file_based_convert_examples_to_features(
             predict_examples,
             label_list,
-            config.get(["max_seq_length"], 512),
+            config.get("max_seq_length", 512),
             tokenizer,
             predict_file,
             task_name,
@@ -392,34 +392,34 @@ def fine_tune_albert(config):
             len(predict_examples) - num_actual_predict_examples,
         )
         tf.logging.info(
-            "  Batch size = %d", config.get(["predict_batch_size"], 8)
+            "  Batch size = %d", config.get("predict_batch_size", 8)
         )
 
         predict_drop_remainder = (
-            True if config.get(["use_tpu"], False) else False
+            True if config.get("use_tpu", False) else False
         )
         predict_input_fn = classifier_utils.file_based_input_fn_builder(
             input_file=predict_file,
-            seq_length=config.get(["max_seq_length"], 512),
+            seq_length=config.get("max_seq_length", 512),
             is_training=False,
             drop_remainder=predict_drop_remainder,
             task_name=task_name,
-            use_tpu=config.get(["use_tpu"], False),
-            bsz=config.get(["predict_batch_size"], 8),
+            use_tpu=config.get("use_tpu", False),
+            bsz=config.get("predict_batch_size", 8),
         )
 
         checkpoint_path = os.path.join(
-            config.get(["output_dir"], None), "model.ckpt-best"
+            config.get("output_dir", None), "model.ckpt-best"
         )
         result = estimator.predict(
             input_fn=predict_input_fn, checkpoint_path=checkpoint_path
         )
 
         output_predict_file = os.path.join(
-            config.get(["output_dir"], None), "test_results.tsv"
+            config.get("output_dir", None), "test_results.tsv"
         )
         output_submit_file = os.path.join(
-            config.get(["output_dir"], None), "submit_results.tsv"
+            config.get("output_dir", None), "submit_results.tsv"
         )
         with tf.gfile.GFile(
             output_predict_file, "w"
@@ -465,3 +465,5 @@ if __name__ == "__main__":
     config = {}
     with open(args.config_file, "r") as stream:
         config = {**config, **yaml.safe_load(stream)}
+    print(config)
+    fine_tune_albert(config)
