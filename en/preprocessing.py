@@ -50,7 +50,7 @@ class SemEval(DataProcessor):
         for guid, text_a, text_b, label in zip(guids, sent1, sent2, score):
             examples.append(
                 InputExample(
-                    guid=guid,
+                    guid=str(guid),
                     text_a=text_a,
                     text_b=text_b,
                     label=str(int(label)),
