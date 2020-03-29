@@ -33,7 +33,7 @@ class SemEval(DataProcessor):
         return self._create_examples(self.val_df)
 
     def get_test_examples(self):
-        return self._create_examples(self.test)
+        return self._create_examples(self.test_df)
     
     def get_labels(self):
         return ["0","1"]
