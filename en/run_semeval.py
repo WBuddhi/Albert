@@ -82,7 +82,6 @@ def fine_tune_albert(config):
         )
     else:
         iterations_per_loop = config.get("iterations_per_loop", 1000)
-    master = tpu_cluster_resolver.get_master()
     run_config = contrib_tpu.RunConfig(
         cluster=tpu_cluster_resolver,
         master=config.get("master", None),

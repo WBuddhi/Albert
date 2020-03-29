@@ -1,10 +1,10 @@
 # Local directories
 task_name: SemEval
 data_dir: /home/buddhi/Albert/en/Data/SemEval2012
-output_dir: /home/buddhi/Albert/en/Data/Output
-cached_dir: /home/buddhi/Albert/en/Data/cached
+output_dir: gs://semeval-checkpoints
+cached_dir: gs://semeval-checkpoints/cache
 # Model hub url
-albert_hub_module_handle: https://tfhub.dev/google/albert_base/3
+albert_hub_module_handle: gs://semeval-checkpoints/albert_model_hub
 # Training params
 spm_model_file: True
 split: 0.25
