@@ -85,7 +85,7 @@ def fine_tune_albert(config):
     master = tpu_cluster_resolver.get_master()
     run_config = contrib_tpu.RunConfig(
         cluster=tpu_cluster_resolver,
-        master=master
+        master=config.get("master", None),
         model_dir=config.get("output_dir", None),
         save_checkpoints_steps=int(
             config.get("save_checkpoints_steps", 1000)
