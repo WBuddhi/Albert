@@ -44,9 +44,9 @@ class SemEval(DataProcessor):
         df["score"] = df["score"].astype(float)
         df["sent1"] = df["sent1"].apply(self.process_text)
         df["sent2"] = df["sent2"].apply(self.process_text)
-        sent1 = df["sent1"].to_list()
-        sent2 = df["sent2"].to_list()
-        score = df["score"].to_list()
+        sent1 = df["sent1"].tolist()
+        sent2 = df["sent2"].tolist()
+        score = df["score"].tolist()
         for guid, text_a, text_b, label in zip(guids, sent1, sent2, score):
             examples.append(
                 InputExample(
