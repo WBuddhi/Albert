@@ -26,13 +26,13 @@ class SemEval(DataProcessor):
             self.val_df = None
         self.test_df = self._load_df(test_path)
 
-    def get_train_examples(self, **kwargs):
+    def get_train_examples(self):
         return self._create_examples(self.train_df)
 
-    def get_val_examples(self, **kwargs):
+    def get_dev_examples(self):
         return self._create_examples(self.val_df)
 
-    def get_test_examples(self, **kwargs):
+    def get_test_examples(self):
         return self._create_examples(self.test)
     
     def get_labels(self):

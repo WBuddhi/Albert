@@ -99,9 +99,7 @@ def fine_tune_albert(config):
 
     train_examples = None
     if config.get("do_train", False):
-        train_examples = processor.get_train_examples(
-            config.get("data_dir", None)
-        )
+        train_examples = processor.get_train_examples()
     model_fn = classifier_utils.model_fn_builder(
         albert_config=albert_config,
         num_labels=len(label_list),
@@ -161,9 +159,7 @@ def fine_tune_albert(config):
         )
 
     if config.get("do_eval", False):
-        eval_examples = processor.get_dev_examples(
-            config.get("data_dir", None)
-        )
+        eval_examples = processor.get_dev_examples()
         num_actual_eval_examples = len(eval_examples)
         if config.get("use_tpu", False):
             # TPU requires a fixed batch size for all batches, therefore the number
@@ -357,9 +353,7 @@ def fine_tune_albert(config):
             )
 
     if config.get("do_predict", False):
-        predict_examples = processor.get_test_examples(
-            config.get("data_dir", None)
-        )
+        predict_examples = processor.get_test_examples()
         num_actual_predict_examples = len(predict_examples)
         if config.get("use_tpu", False):
             # TPU requires a fixed batch size for all batches, therefore the number
