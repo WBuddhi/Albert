@@ -415,6 +415,8 @@ def fine_tune_albert(config):
         output_submit_file = os.path.join(
             config.get("output_dir", None), "submit_results.tsv"
         )
+        for key in sorted(result.keys()):
+            tf.logging.info("  %s = %s", key, str(result[key]))
         with tf.gfile.GFile(
             output_predict_file, "w"
         ) as pred_writer, tf.gfile.GFile(
