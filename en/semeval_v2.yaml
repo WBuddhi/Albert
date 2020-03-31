@@ -19,6 +19,7 @@ train_step: 5000
 warmup_step: 0
 save_checkpoints_steps: 1000
 iterations_per_loop: 1000
+init_checkpoint: model.ckpt-0
 # Google cloud compute params
 use_tpu: True
 optimizer: adamw
