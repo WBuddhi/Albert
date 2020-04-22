@@ -12,33 +12,23 @@ class SemEval(DataProcessor):
             use_spm=True if config.get("spm_model_file", None) else False,
             do_lower_case=config.get("do_lower_case", True),
         )
-        data_dir = config.get("data_dir", None)
-        train_path = os.path.join(data_dir, "train.csv")
-        test_path = os.path.join(data_dir, "test.csv")
-        train_df = self._load_df(train_path)
-        split = config.get("split", None)
-        if split:
-            self.train_df, self.val_df = train_test_split(
-                train_df, test_size=split
-            )
-        else:
-            self.train_df = train_df
-            self.val_df = None
-        self.test_df = self._load_df(test_path)
+        self.data_dir = config.get("data_dir", None)
 
-    def get_train_examples(self):
-        return self._create_examples(self.train_df)
+    def get_train_examples(self, train_df):
+        return self._create_examples(train_df)
 
-    def get_dev_examples(self):
-        return self._create_examples(self.val_df)
+    def get_dev_examples(self, dev_df):
+        return self._create_examples(dev_df)
 
-    def get_test_examples(self):
-        return self._create_examples(self.test_df)
+    def get_test_examples(self, test_df):
+        return self._create_examples(test_df)
     
     def get_labels(self):
         return ["0","1"]
 
-    def _create_examples(self, df):
+    def _create_examples(self, df_path):
+        df_path = os.path.join(self.data_dir, df_path)
+        df = self._load_df(df_path)
         examples = []
         guids = df.index
         df["score"] = df["score"].astype(float)
