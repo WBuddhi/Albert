@@ -14,20 +14,20 @@ class SemEval(DataProcessor):
         )
         self.data_dir = config.get("data_dir", None)
 
-    def get_train_examples(self, train_df):
-        return self._create_examples(train_df)
+    def get_train_examples(self):
+        return self._create_examples(train_df, "SemEvalTrain.csv")
 
-    def get_dev_examples(self, dev_df):
-        return self._create_examples(dev_df)
+    def get_dev_examples(self):
+        return self._create_examples(dev_df, "SemEvalVal.csv")
 
-    def get_test_examples(self, test_df):
-        return self._create_examples(test_df)
+    def get_test_examples(self):
+        return self._create_examples(test_df, "SemEvalTest.csv")
     
     def get_labels(self):
         return ["0","1"]
 
-    def _create_examples(self, df_path):
-        df_path = os.path.join(self.data_dir, df_path)
+    def _create_examples(self, file_name):
+        df_path = os.path.join(self.data_dir, file_name)
         df = self._load_df(df_path)
         examples = []
         guids = df.index
