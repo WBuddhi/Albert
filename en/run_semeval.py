@@ -100,12 +100,17 @@ def fine_tune_albert(config):
     train_examples = None
     if config.get("do_train", False):
         train_examples = processor.get_train_examples()
+        num_train_steps = int(
+            len(train_examples)
+            / config.get("train_batch_size", 32)
+            * config.get("num_train_epochs", 100)
+        )
     model_fn = classifier_utils.model_fn_builder(
         albert_config=albert_config,
         num_labels=len(label_list),
         init_checkpoint=config.get("init_checkpoint", None),
         learning_rate=config.get("learning_rate", 5e-5),
-        num_train_steps=config.get("train_step", 1000),
+        num_train_steps=num_train_steps,
         num_warmup_steps=config.get("warmup_step", 0),
         use_tpu=config.get("use_tpu", False),
         use_one_hot_embeddings=config.get("use_tpu", False),
@@ -144,7 +149,7 @@ def fine_tune_albert(config):
         tf.logging.info(
             "  Batch size = %d", config.get("train_batch_size", 32)
         )
-        tf.logging.info("  Num steps = %d", config.get("train_step", 1000))
+        tf.logging.info("  Num steps = %d", num_train_steps)
         train_input_fn = classifier_utils.file_based_input_fn_builder(
             input_file=train_file,
             seq_length=config.get("max_seq_length", 512),
@@ -155,7 +160,7 @@ def fine_tune_albert(config):
             bsz=config.get("train_batch_size", 32),
         )
         estimator.train(
-            input_fn=train_input_fn, max_steps=config.get("train_step", 1000)
+            input_fn=train_input_fn, max_steps=num_train_steps
         )
 
     if config.get("do_eval", False):
@@ -277,7 +282,7 @@ def fine_tune_albert(config):
 
         global_step, best_perf_global_step, best_perf = _best_trial_info()
         writer = tf.gfile.GFile(output_eval_file, "w")
-        while global_step < config.get("train_step", 1000):
+        while global_step < num_train_steps:
             steps_and_files = {}
             filenames = tf.gfile.ListDirectory(
                 config.get("output_dir", None)

@@ -7,15 +7,14 @@ cached_dir: gs://semeval-checkpoints/cache
 albert_hub_module_handle: gs://semeval-checkpoints/albert_model_hub
 # Training params
 spm_model_file: True
-split: 0.25
 do_train: true
 do_eval: true
 do_predict: true
 do_lower_case: true
 train_batch_size: 32
+num_train_epochs: 1
 eval_batch_size: 8
 predict_batch_size: 8
-train_step: 5000
 warmup_step: 0
 save_checkpoints_steps: 1000
 iterations_per_loop: 1000

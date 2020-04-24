@@ -1,7 +1,6 @@
 import pandas as pd
 import os
 from pathlib import Path
-from sklearn.model_selection import train_test_split
 from albert.classifier_utils import DataProcessor, InputExample
 
 
@@ -15,13 +14,13 @@ class SemEval(DataProcessor):
         self.data_dir = config.get("data_dir", None)
 
     def get_train_examples(self):
-        return self._create_examples(train_df, "SemEvalTrain.csv")
+        return self._create_examples("SemEvalTrain.csv")
 
     def get_dev_examples(self):
-        return self._create_examples(dev_df, "SemEvalVal.csv")
+        return self._create_examples("SemEvalVal.csv")
 
     def get_test_examples(self):
-        return self._create_examples(test_df, "SemEvalTest.csv")
+        return self._create_examples("SemEvalTest.csv")
     
     def get_labels(self):
         return ["0","1"]
