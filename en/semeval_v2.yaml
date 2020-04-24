@@ -12,7 +12,7 @@ do_eval: true
 do_predict: true
 do_lower_case: true
 train_batch_size: 32
-num_train_epochs: 1
+num_train_epochs: 100
 eval_batch_size: 8
 predict_batch_size: 8
 warmup_step: 0
