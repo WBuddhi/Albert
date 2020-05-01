@@ -1,6 +1,6 @@
 # Local directories
 task_name: sts-b
-data_dir: /home/buddhi/MachineLearning/Albert/en/Data
+data_dir: /home/buddhi/Albert/en/Data
 output_dir: gs://semeval-checkpoints/sts-b/
 cached_dir: gs://semeval-checkpoints/sts-b/cache
 # Model hub url
