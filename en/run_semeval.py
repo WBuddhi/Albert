@@ -86,9 +86,7 @@ def fine_tune_albert(config):
         cluster=tpu_cluster_resolver,
         master=config.get("master", None),
         model_dir=config.get("output_dir", None),
-        save_checkpoints_steps=int(
-            config.get("save_checkpoints_steps", 1000)
-        ),
+        save_checkpoints_steps=int(config.get("save_checkpoints_steps", 1000)),
         keep_checkpoint_max=0,
         tpu_config=contrib_tpu.TPUConfig(
             iterations_per_loop=iterations_per_loop,
@@ -159,9 +157,7 @@ def fine_tune_albert(config):
             use_tpu=config.get("use_tpu", False),
             bsz=config.get("train_batch_size", 32),
         )
-        estimator.train(
-            input_fn=train_input_fn, max_steps=num_train_steps
-        )
+        estimator.train(input_fn=train_input_fn, max_steps=num_train_steps)
 
     if config.get("do_eval", False):
         eval_examples = processor.get_dev_examples()
@@ -196,9 +192,7 @@ def fine_tune_albert(config):
             num_actual_eval_examples,
             len(eval_examples) - num_actual_eval_examples,
         )
-        tf.logging.info(
-            "  Batch size = %d", config.get("eval_batch_size", 8)
-        )
+        tf.logging.info("  Batch size = %d", config.get("eval_batch_size", 8))
 
         # This tells the estimator to run through the entire set.
         eval_steps = None
@@ -257,9 +251,7 @@ def fine_tune_albert(config):
                 tf.gfile.Remove(src_ckpt)
 
         def _find_valid_cands(curr_step):
-            filenames = tf.gfile.ListDirectory(
-                config.get("output_dir", None)
-            )
+            filenames = tf.gfile.ListDirectory(config.get("output_dir", None))
             candidates = []
             for filename in filenames:
                 if filename.endswith(".index"):
@@ -284,9 +276,7 @@ def fine_tune_albert(config):
         writer = tf.gfile.GFile(output_eval_file, "w")
         while global_step < num_train_steps:
             steps_and_files = {}
-            filenames = tf.gfile.ListDirectory(
-                config.get("output_dir", None)
-            )
+            filenames = tf.gfile.ListDirectory(config.get("output_dir", None))
             for filename in filenames:
                 if filename.endswith(".index"):
                     ckpt_name = filename[:-6]

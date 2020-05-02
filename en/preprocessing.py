@@ -21,9 +21,9 @@ class SemEval(DataProcessor):
 
     def get_test_examples(self):
         return self._create_examples("SemEvalTest.csv")
-    
+
     def get_labels(self):
-        return ["0","1"]
+        return ["0", "1"]
 
     def _create_examples(self, file_name):
         df_path = os.path.join(self.data_dir, file_name)
