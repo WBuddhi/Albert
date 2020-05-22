@@ -30,7 +30,7 @@ def train_model(config: dict):
     optimizer = _create_optimizer(config)
     # TPU init code
     resolver = tf.distribute.cluster_resolver.TPUClusterResolver(
-        tpu=f"grpc://{config['tpu_name']}"
+        tpu=config['tpu_name']
     )
     tf.config.experimental_connect_to_cluster(resolver)
     tf.tpu.experimental.initialize_tpu_system(resolver)
