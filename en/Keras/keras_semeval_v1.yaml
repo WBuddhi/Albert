@@ -1,6 +1,6 @@
 # Local directories
 task_name: SemEval
-data_dir: /home/buddhi/Albert/en/Data/SemEval2012
+data_dir: /home/buddhi/Albert/en/Data/STS-B
 output_dir: gs://semeval-checkpoints/sts-keras/
 cached_dir: gs://semeval-checkpoints/sts-keras/cache
 # Model hub url
