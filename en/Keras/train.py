@@ -12,7 +12,7 @@ from optimizer.polynomial_decay_with_warmup import PolynomialDecayWarmup
 from optimizer.adamw import AdamWeightDecayOptimizer
 from utils import read_yaml_config
 import argparse
-from tokenizer import FullTokenizer
+from tokenization import FullTokenizer
 
 
 def train_model(config: dict):
