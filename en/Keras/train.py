@@ -3,7 +3,7 @@ import os
 import tensorflow as tf
 from tensorflow.compat.v1 import logging
 from model import StsbModel
-from dataprocessor import DataProcessor, StsProcessor
+from dataprocessor import DataProcessor, StsbProcessor
 from preprocess import (
     file_based_input_fn_builder,
     file_based_convert_examples_to_features,
