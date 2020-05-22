@@ -91,7 +91,7 @@ class StsbHead(tf.keras.layers.Layer):
 
 
 class StsbModel(tf.keras.Model):
-    def __init__(self, config:dict, pretrain_train_mode: bool = True):
+    def __init__(self, config: dict, pretrain_train_mode: bool = True):
         """
         ALBERT STS-B model.
 

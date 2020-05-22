@@ -3,11 +3,16 @@ import os
 import tensorflow as tf
 from tensorflow.compat.v1 import logging
 from model import StsModel
-from preprocess import StsProcessor, file_based_input_fn_builder
+from dataprocessor import DataProcessor, StsProcessor
+from preprocess import (
+    file_based_input_fn_builder,
+    file_based_convert_examples_to_features,
+)
 from optimizer.polynomial_decay_with_warmup import PolynomialDecayWarmup
 from optimizer.adamw import AdamWeightDecayOptimizer
 from utils import read_yaml_config
 import argparse
+from tokenizer import FullTokenizer
 
 
 def train_model(config: dict):
@@ -18,6 +23,7 @@ def train_model(config: dict):
         config (dict): config
     """
 
+    logging.set_verbosity(tf.logging.DEBUG)
     stsb_processor = StsProcessor(config["use_spm"], config["do_lower_case"])
     train_examples = stsb_processor.get_train_examples(config["data_dir"])
     config["training_steps"] = len(train_examples)
@@ -41,12 +47,17 @@ def train_model(config: dict):
             metrics=metrics,
         )
 
-    train_file, eval_file = _create_train_eval_input_files(config)
+    logging.debug(model.summary())
+    train_file, eval_file, test_file = _create_train_eval_input_files(config)
+    seq_len = config.get("sequence_len", 512)
     train_dataset = file_based_input_fn_builder(
-        train_file, config.get("sequence_len", 512), is_training=True
+        train_file, seq_len, is_training=True,
     )
     eval_dataset = file_based_input_fn_builder(
-        eval_file, config.get("sequence_len", 512), is_training=False
+        eval_file, seq_len, is_training=False,
+    )
+    test_dataset = file_based_input_fn_builder(
+        test_file, seq_len, is_training=False,
     )
     model.fit(
         train_dataset,
@@ -55,23 +66,63 @@ def train_model(config: dict):
     )
 
 
-def _create_train_eval_input_files(config: dict) -> Tuple[str]:
+def _create_train_eval_input_files(
+    config: dict, processor: DataProcessor
+) -> Tuple[str]:
     """
     Create training and eval input files.
 
     Args:
         config (dict): config
+        processor (DataProcessor): processor
 
     Returns:
-        Tuple[str]: (training data file, evaluation data file)
+        Tuple[str]: (training data file,
+            evaluation data file,
+            test data file)
     """
     cached_dir = config.get("cached_dir", None)
     task_name = config.get("task_name", "Experiment")
+    data_dir = config.get("data_dir", "")
     if not cached_dir:
         cached_dir = config.get("output_dir", None)
     train_file = os.path.join(cached_dir, task_name + "_train.tf_record")
+    train_examples = processor.get_train_examples(data_dir)
     eval_file = os.path.join(cached_dir, task_name + "_eval.tf_record")
-    return train_file, eval_file
+    eval_examples = processor.get_dev_examples(data_dir)
+    test_file = os.path.join(cached_dir, task_name + "_test.tf_record")
+    test_examples = processor.get_test_examples(data_dir)
+    label_list = processor.get_labels()
+    tokenizer = _get_tokenizer(config)
+    for data_file, examples in zip(
+        (train_file, eval_file, test_file),
+        (train_examples, eval_examples, test_examples),
+    ):
+        file_based_convert_examples_to_features(
+            examples,
+            label_list,
+            config.get("sequence_len", 521),
+            tokenizer,
+            data_file,
+            task_name,
+        )
+    return train_file, eval_file, test_file
+
+
+def _get_tokenizer(config: dict) -> FullTokenizer:
+    """
+    Get tokenizer.
+
+    Args:
+        config (dict): config
+
+    Returns:
+        FullTokenizer:
+    """
+    return FullTokenizer.from_hub_module(
+        hub_module=config.get("albert_hub_module_handle", None),
+        use_spm=config.get("spm_model_file", False),
+    )
 
 
 def pearson_correlation_metric_fn(
@@ -117,21 +168,20 @@ def _create_optimizer(config: dict) -> AdamWeightDecayOptimizer:
         )
         * float(config.get("num_train_epochs", 100))
     )
+    params_log = {
+        "Initial learning rate": init_lr,
+        "Number of training steps": num_train_steps,
+        "Number of warmup steps": num_warmup_steps,
+        "End learning rate": 0.0,
+        "Weight decay rate": weight_decay_rate,
+        "Beta_1": beta_1,
+        "Beta_2": beta_2,
+        "Epsilon": epsilon,
+        "Excluded layers from weight decay": exclude_from_weight_decay,
+    }
     logging.debug("Optimizer Parameters")
     logging.debug("=" * 20)
-    logging.debug(
-        {
-            "Initial learning rate": init_lr,
-            "Number of training steps": num_train_steps,
-            "Number of warmup steps": num_warmup_steps,
-            "End learning rate": 0.0,
-            "Weight decay rate": weight_decay_rate,
-            "Beta_1": beta_1,
-            "Beta_2": beta_2,
-            "Epsilon": epsilon,
-            "Excluded layers from weight decay": exclude_from_weight_decay,
-        }
-    )
+    logging.debug(**params_log)
 
     learning_rate = PolynomialDecayWarmup(
         initial_learning_rate=init_lr,

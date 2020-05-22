@@ -1,8 +1,8 @@
 # Local directories
 task_name: SemEval
 data_dir: /home/buddhi/Albert/en/Data/SemEval2012
-output_dir: gs://semeval-checkpoints
-cached_dir: gs://semeval-checkpoints/cache
+output_dir: gs://semeval-checkpoints/sts-keras/
+cached_dir: gs://semeval-checkpoints/sts-keras/cache
 # Model hub url
 albert_hub_module_handle: gs://semeval-checkpoints/albert_model_hub
 # Training params
