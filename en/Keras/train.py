@@ -2,7 +2,7 @@ from typing import Tuple
 import os
 import tensorflow as tf
 from tensorflow.compat.v1 import logging
-from model import StsModel
+from model import StsbModel
 from dataprocessor import DataProcessor, StsProcessor
 from preprocess import (
     file_based_input_fn_builder,
