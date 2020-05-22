@@ -24,7 +24,7 @@ def train_model(config: dict):
     """
 
     logging.set_verbosity(tf.logging.DEBUG)
-    stsb_processor = StsProcessor(config["use_spm"], config["do_lower_case"])
+    stsb_processor = StsbProcessor(config["use_spm"], config["do_lower_case"])
     train_examples = stsb_processor.get_train_examples(config["data_dir"])
     config["training_steps"] = len(train_examples)
     optimizer = _create_optimizer(config)
@@ -40,7 +40,7 @@ def train_model(config: dict):
         pearson_correlation_metric_fn,
     ]
     with strategy.scope():
-        model = StsModel
+        model = StsbModel()
         model.compile(
             optimizer=optimizer,
             loss=tf.keras.losses.MeanSquaredError(),
