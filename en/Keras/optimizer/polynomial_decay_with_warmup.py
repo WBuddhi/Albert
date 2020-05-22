@@ -34,7 +34,7 @@ class PolynomialDecayWarmup(LearningRateSchedule):
             cycle (bool): cycle
             name (str): name
         """
-        super(PolynomialDecay, self).__init__()
+        super(PolynomialDecayWarmup, self).__init__()
 
         self.initial_learning_rate = initial_learning_rate
         self.decay_steps = decay_steps

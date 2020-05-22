@@ -14,13 +14,15 @@ class AlbertLayer(tf.keras.layers.Layer):
         """
 
         self.trainable = train_layers
+        self.config = config
         super(AlbertLayer, self).__init__(**kwargs)
 
-    def build(self):
+    def build(self, input_shape):
         """Build layer."""
 
+        tf.logging.debug(input_shape)
         self.albert = hub.Module(
-            config=self.config["albert_hub_module_handle"],
+            self.config["albert_hub_module_handle"],
             trainable=self.trainable,
             name="{}_module".format(self.name),
         )
@@ -29,7 +31,7 @@ class AlbertLayer(tf.keras.layers.Layer):
             self._trainable_weights.extend(
                 [var for var in albert_vars if "/cls/" not in var.name]
             )
-        super(AlbertLayer, self).build()
+        super(AlbertLayer, self).build(input_shape)
 
     def call(self, inputs: list) -> tf.Tensor:
         """
@@ -102,7 +104,7 @@ class StsbModel(tf.keras.Model):
         self.pretrained_layer = AlbertLayer(
             config, train_layers=pretrain_train_mode
         )
-        hidden_size = self.pretrained_layer.output_size
+        hidden_size = 768
         self.custom_head = StsbHead(hidden_size)
 
     def call(self, inputs):

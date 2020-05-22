@@ -101,7 +101,7 @@ def file_based_input_fn_builder(
 
     def _decode_record(
         record: tf.data.TFRecordDataset, name_to_features: dict
-    ) -> tf.Example:
+    ) -> object:
         """
         Decodes a record to a TensorFlow example.
 
@@ -142,7 +142,7 @@ def file_based_input_fn_builder(
         dataset = dataset.batch(batch_size, drop_remainder=drop_remainder)
         return dataset
 
-    return input_fn
+    return input_fn()
 
 
 def file_based_convert_examples_to_features(
@@ -180,8 +180,6 @@ def file_based_convert_examples_to_features(
         features["segment_ids"] = create_int_feature(feature.segment_ids)
         features["label_ids"] = (
             create_float_feature([feature.label_id])
-            if task_name == "sts-b"
-            else create_int_feature([feature.label_id])
         )
         features["is_real_example"] = create_int_feature(
             [int(feature.is_real_example)]
@@ -229,11 +227,6 @@ def convert_single_example(
             label_id=0,
             is_real_example=False,
         )
-
-    if task_name != "sts-b":
-        label_map = {}
-        for (i, label) in enumerate(label_list):
-            label_map[label] = i
 
     tokens_a = tokenizer.tokenize(example.text_a)
     tokens_b = None
@@ -301,10 +294,7 @@ def convert_single_example(
     assert len(input_mask) == max_seq_length
     assert len(segment_ids) == max_seq_length
 
-    if task_name != "sts-b":
-        label_id = label_map[example.label]
-    else:
-        label_id = example.label
+    label_id = example.label
 
     if ex_index < 5:
         tf.logging.info("*** Example ***")

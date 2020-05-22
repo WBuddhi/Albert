@@ -36,19 +36,20 @@ def train_model(config: dict):
     tf.tpu.experimental.initialize_tpu_system(resolver)
     strategy = tf.distribute.experimental.TPUStrategy(resolver)
     metrics = [
-        tf.keras.metrics.MeanSquaredErrori,
+        tf.keras.metrics.MeanSquaredError,
         pearson_correlation_metric_fn,
     ]
     with strategy.scope():
-        model = StsbModel()
+        model = StsbModel(config)
         model.compile(
             optimizer=optimizer,
             loss=tf.keras.losses.MeanSquaredError(),
             metrics=metrics,
         )
 
-    logging.debug(model.summary())
-    train_file, eval_file, test_file = _create_train_eval_input_files(config)
+    #model.build()
+    #logging.debug(model.summary())
+    train_file, eval_file, test_file = _create_train_eval_input_files(config, stsb_processor)
     seq_len = config.get("sequence_len", 512)
     train_dataset = file_based_input_fn_builder(
         train_file, seq_len, is_training=True,
@@ -181,8 +182,8 @@ def _create_optimizer(config: dict) -> AdamWeightDecayOptimizer:
     }
     logging.debug("Optimizer Parameters")
     logging.debug("=" * 20)
-    logging.debug(**params_log)
-
+    for key,value in params_log.items():
+        logging.debug(f"{key}: {value}")
     learning_rate = PolynomialDecayWarmup(
         initial_learning_rate=init_lr,
         decay_steps=num_train_steps,
