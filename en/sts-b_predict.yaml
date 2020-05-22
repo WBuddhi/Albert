@@ -1,13 +1,13 @@
 # Local directories
 task_name: sts-b
 data_dir: /home/buddhi/Albert/en/Data
-output_dir: gs://semeval-checkpoints/sts-b/
-cached_dir: gs://semeval-checkpoints/sts-b/cache
+output_dir: gs://semeval-checkpoints/sts-b_debug/
+cached_dir: gs://semeval-checkpoints/sts-b_debug/cache
 # Model hub url
-albert_hub_module_handle: gs://semeval-checkpoints/sts-b/albert_model_hub
+albert_hub_module_handle: gs://semeval-checkpoints/sts-b_debug/albert_model_hub
 # Training params
 spm_model_file: true
-do_train: false
+do_train: true
 do_eval: false
 do_predict: true
 do_lower_case: true
@@ -18,7 +18,6 @@ predict_batch_size: 8
 warmup_proportion: 0.1
 save_checkpoints_steps: 1000
 iterations_per_loop: 1000
-init_checkpoint: gs://semeval-checkpoints/sts-b/model.ckpt-best
 # Google cloud compute params
 use_tpu: true
 optimizer: adamw
