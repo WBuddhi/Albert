@@ -1,4 +1,4 @@
-from tensorflow.python.keras.optimizer_v2 import OptimizerV2
+from tensorflow.python.keras.optimizer_v2.optimizer_v2 import OptimizerV2
 from tensorflow.python.framework import ops
 from tensorflow.python.keras import backend_config
 from tensorflow.python.ops import array_ops
