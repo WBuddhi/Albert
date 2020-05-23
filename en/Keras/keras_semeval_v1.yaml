@@ -21,7 +21,7 @@ save_checkpoints_steps: 1000
 iterations_per_loop: 1000
 #init_checkpoint: gs://model.ckpt-0.data-00000-of-00001
 # Google cloud compute params
-use_tpu: True
+use_tpu: False
 optimizer: adamw
 tpu_name: buddhi-ml
 gcp_project: tpu-v1

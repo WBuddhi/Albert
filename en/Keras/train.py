@@ -13,6 +13,7 @@ from optimizer.adamw import AdamWeightDecayOptimizer
 from utils import read_yaml_config
 import argparse
 from tokenization import FullTokenizer
+import tensorflow_hub as hub
 
 
 def train_model(config: dict):
@@ -23,32 +24,39 @@ def train_model(config: dict):
         config (dict): config
     """
 
-    tf.enable_eager_execution()
+    #tf.enable_eager_execution()
     logging.set_verbosity(tf.logging.DEBUG)
     stsb_processor = StsbProcessor(config["spm_model_file"], config["do_lower_case"])
     train_examples = stsb_processor.get_train_examples(config["data_dir"])
     config["training_steps"] = len(train_examples)
     optimizer = _create_optimizer(config)
     # TPU init code
-    resolver = tf.distribute.cluster_resolver.TPUClusterResolver(
-        tpu=config['tpu_name']
-    )
-    tf.config.experimental_connect_to_cluster(resolver)
-    tf.tpu.experimental.initialize_tpu_system(resolver)
-    strategy = tf.distribute.experimental.TPUStrategy(resolver)
+    if config.get('use_tpu',False):
+        resolver = tf.distribute.cluster_resolver.TPUClusterResolver(
+            tpu=config['tpu_name']
+        )
+        tf.config.experimental_connect_to_cluster(resolver)
+        tf.tpu.experimental.initialize_tpu_system(resolver)
+        strategy = tf.distribute.experimental.TPUStrategy(resolver)
+    else:
+        strategy = tf.distribute.MirroredStrategy()
     metrics = [
-        tf.keras.metrics.MeanSquaredError,
-        pearson_correlation_metric_fn,
+        "MeanSquaredError",
+        #pearson_correlation_metric_fn,
     ]
     seq_len = config.get("sequence_len", 512)
     with strategy.scope():
-        input_ids = tf.keras.Input(input_shape = (seq_len,), dtype=tf.int32)
-        input_masks = tf.keras.Input(input_shape = (seq_len,), dtype = tf.int32)
-        input_segments = tf.keras.Input(input_shape = (seq_len,), dtype = tf.int32)
-        inputs = (input_ids, input_masks, input_segments)
-        albert_output = AlbertLayer(config)(inputs)
-        output = StsbHead(albert_output.shape[-1].value)(albert_output)
-        model = tf.keras.Model(inputs=inputs,outputs=outputs)
+        sess = tf.Session()
+        inputs = {}
+        inputs['input_ids'] = tf.keras.Input(shape = (seq_len,), dtype=tf.int32)
+        inputs['input_mask'] = tf.keras.Input(shape = (seq_len,), dtype = tf.int32)
+        inputs['segment_ids'] = tf.keras.Input(shape = (seq_len,), dtype = tf.int32)
+        tags = set()
+        tags.add("train")
+        albert_module = hub.Module(config['albert_hub_module_handle'], tags=tags, trainable=True)
+        albert_outputs = albert_module(inputs=inputs, signature="tokens", as_dict=True)["pooled_output"]
+        output = StsbHead(albert_outputs.shape[-1].value, name='stsb_head')(albert_outputs)
+        model = tf.keras.Model(inputs=inputs,outputs=output)
         model.compile(
             optimizer=optimizer,
             loss=tf.keras.losses.MeanSquaredError(),
