@@ -15,7 +15,7 @@ class AlbertLayer(tf.keras.layers.Layer):
 
         self.trainable = train_layers
         self.config = config
-        super(AlbertLayer, self).__init__(**kwargs)
+        super(AlbertLayer, self).__init__(dynamic=True, **kwargs)
 
     def build(self, input_shape):
         """Build layer."""
@@ -43,6 +43,8 @@ class AlbertLayer(tf.keras.layers.Layer):
             result: output tensor.
         """
 
+        tf.logging.debug("model input")
+        tf.logging.debug(inputs)
         inputs = [K.cast(x, dtype="int32") for x in inputs]
         input_ids, input_mask, segment_ids = inputs
         albert_inputs = dict(
@@ -51,6 +53,7 @@ class AlbertLayer(tf.keras.layers.Layer):
         result = self.albert(
             inputs=albert_inputs, signature="tokens", as_dict=True
         )["pooled_output"]
+        tf.logging.debug(result)
 
         return result
 
@@ -117,4 +120,5 @@ class StsbModel(tf.keras.Model):
             Model predictions
         """
         predictions = self.custom_head(self.pretrained_layer(inputs))
+        tf.logging.debug(predictions)
         return predictions

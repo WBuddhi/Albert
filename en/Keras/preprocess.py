@@ -117,14 +117,14 @@ def file_based_input_fn_builder(
         # tf.Example only supports tf.int64, but the TPU only
         #   supports tf.int32.
         # So cast all int64 to int32.
-        inputs = {}
+
         for name in list(example.keys()):
             t = example[name]
             if t.dtype == tf.int64:
-                t = tf.dtype.cast(t, tf.int32)
+                t = tf.cast(t, tf.int32)
             example[name] = t
 
-        return [example['input_ids'],example['input_mask'], example['segment_ids']],example['label_id']
+        return [example['input_ids'],example['input_mask'], example['segment_ids']],example['label_ids']
 
     def input_fn():
         """The actual input function."""

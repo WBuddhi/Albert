@@ -23,6 +23,7 @@ def train_model(config: dict):
         config (dict): config
     """
 
+    tf.enable_eager_execution()
     logging.set_verbosity(tf.logging.DEBUG)
     stsb_processor = StsbProcessor(config["spm_model_file"], config["do_lower_case"])
     train_examples = stsb_processor.get_train_examples(config["data_dir"])
@@ -46,9 +47,9 @@ def train_model(config: dict):
             loss=tf.keras.losses.MeanSquaredError(),
             metrics=metrics,
         )
+        model.build((32,3,512))
+        logging.debug(model.summary())
 
-    #model.build()
-    #logging.debug(model.summary())
     train_file, eval_file, test_file = _create_train_eval_input_files(config, stsb_processor)
     seq_len = config.get("sequence_len", 512)
     train_dataset = file_based_input_fn_builder(
