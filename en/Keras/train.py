@@ -2,7 +2,7 @@ from typing import Tuple
 import os
 import tensorflow as tf
 from tensorflow.compat.v1 import logging
-from model import StsbModel
+from model import StsbModel, AlbertLayer, StsbHead
 from dataprocessor import DataProcessor, StsbProcessor
 from preprocess import (
     file_based_input_fn_builder,
@@ -40,18 +40,23 @@ def train_model(config: dict):
         tf.keras.metrics.MeanSquaredError,
         pearson_correlation_metric_fn,
     ]
+    seq_len = config.get("sequence_len", 512)
     with strategy.scope():
-        model = StsbModel(config)
+        input_ids = tf.keras.Input(input_shape = (seq_len,), dtype=tf.int32)
+        input_masks = tf.keras.Input(input_shape = (seq_len,), dtype = tf.int32)
+        input_segments = tf.keras.Input(input_shape = (seq_len,), dtype = tf.int32)
+        inputs = (input_ids, input_masks, input_segments)
+        albert_output = AlbertLayer(config)(inputs)
+        output = StsbHead(albert_output.shape[-1].value)(albert_output)
+        model = tf.keras.Model(inputs=inputs,outputs=outputs)
         model.compile(
             optimizer=optimizer,
             loss=tf.keras.losses.MeanSquaredError(),
             metrics=metrics,
         )
-        model.build((32,3,512))
         logging.debug(model.summary())
 
     train_file, eval_file, test_file = _create_train_eval_input_files(config, stsb_processor)
-    seq_len = config.get("sequence_len", 512)
     train_dataset = file_based_input_fn_builder(
         train_file, seq_len, is_training=True,
     )
