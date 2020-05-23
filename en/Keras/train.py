@@ -24,7 +24,6 @@ def train_model(config: dict):
         config (dict): config
     """
 
-    #tf.enable_eager_execution()
     logging.set_verbosity(tf.logging.DEBUG)
     stsb_processor = StsbProcessor(config["spm_model_file"], config["do_lower_case"])
     train_examples = stsb_processor.get_train_examples(config["data_dir"])
@@ -51,10 +50,11 @@ def train_model(config: dict):
         inputs['input_ids'] = tf.keras.Input(shape = (seq_len,), dtype=tf.int32)
         inputs['input_mask'] = tf.keras.Input(shape = (seq_len,), dtype = tf.int32)
         inputs['segment_ids'] = tf.keras.Input(shape = (seq_len,), dtype = tf.int32)
-        tags = set()
-        tags.add("train")
-        albert_module = hub.Module(config['albert_hub_module_handle'], tags=tags, trainable=True)
-        albert_outputs = albert_module(inputs=inputs, signature="tokens", as_dict=True)["pooled_output"]
+        #tags = set()
+        #tags.add("train")
+        #albert_module = hub.Module(config['albert_hub_module_handle'], tags=tags, trainable=True)
+        #albert_outputs = albert_module(inputs=inputs, signature="tokens", as_dict=True)["pooled_output"]
+        albert_outputs = AlbertLayer(config)(list(inputs.values()))
         output = StsbHead(albert_outputs.shape[-1].value, name='stsb_head')(albert_outputs)
         model = tf.keras.Model(inputs=inputs,outputs=output)
         model.compile(

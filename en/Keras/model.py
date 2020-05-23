@@ -1,10 +1,10 @@
-import tensorflow.compat.v1 as tf
+import tensorflow as tf
 import tensorflow_hub as hub
 from tensorflow.keras import backend as K
 
 
 class AlbertLayer(tf.keras.layers.Layer):
-    def __init__(self, config: dict, sess: tf.Session, train_layers: bool = True, **kwargs):
+    def __init__(self, config: dict, train_layers: bool = True, **kwargs):
         """
         Albert Model converted to keras layer.
 
@@ -13,10 +13,9 @@ class AlbertLayer(tf.keras.layers.Layer):
             train_layers: allow albert variables to be trained
         """
 
-        K.set_session(sess)
         self.trainable = train_layers
         self.config = config
-        super(AlbertLayer, self).__init__(dynamic=True, **kwargs)
+        super(AlbertLayer, self).__init__(**kwargs)
 
     def build(self, input_shape):
         """Build layer."""
