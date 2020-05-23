@@ -61,6 +61,7 @@ def train_model(config: dict):
             optimizer=optimizer,
             loss=tf.keras.losses.MeanSquaredError(),
             metrics=metrics,
+            distribute=strategy,
         )
         logging.debug(model.summary())
 
