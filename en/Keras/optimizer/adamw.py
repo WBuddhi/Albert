@@ -43,7 +43,6 @@ class AdamWeightDecayOptimizer(OptimizerV2):
         self.exclude_from_weight_decay = exclude_from_weight_decay
         self._use_locking = False
         logging.debug(f"exclude layers: {self.exclude_from_weight_decay}")
-        
 
     def _create_slots(self, var_list):
         # Create slots for the first and second moments.
@@ -59,9 +58,7 @@ class AdamWeightDecayOptimizer(OptimizerV2):
         )
 
         local_step = math_ops.cast(self.iterations + 1, var_dtype)
-        w_d = array_ops.identity(
-            self._get_hyper("weight_decay_rate", var_dtype)
-        )
+        w_d = array_ops.identity(self._get_hyper("weight_decay_rate", var_dtype))
         beta_1_t = array_ops.identity(self._get_hyper("beta_1", var_dtype))
         beta_2_t = array_ops.identity(self._get_hyper("beta_2", var_dtype))
         beta_1_power = math_ops.pow(beta_1_t, local_step)
@@ -109,9 +106,7 @@ class AdamWeightDecayOptimizer(OptimizerV2):
         lr_t = coefficients["lr_t"]
 
         m_t = state_ops.assign(
-            m,
-            beta_1_t * m + (1.0 - beta_1_t) * grad,
-            use_locking=self._use_locking,
+            m, beta_1_t * m + (1.0 - beta_1_t) * grad, use_locking=self._use_locking,
         )
         v_t = state_ops.assign(
             v,
@@ -128,9 +123,7 @@ class AdamWeightDecayOptimizer(OptimizerV2):
         var_delta_with_lr = lr_t * var_delta
         var_t = var - var_delta_with_lr
 
-        var_update = state_ops.assign(
-            var, var_t, use_locking=self._use_locking
-        )
+        var_update = state_ops.assign(var, var_t, use_locking=self._use_locking)
         updates = [var_update, m_t, v_t]
         return control_flow_ops.group(*updates)
 
@@ -188,9 +181,7 @@ class AdamWeightDecayOptimizer(OptimizerV2):
         var_delta_with_lr = lr_t * var_delta
         var_t = var - var_delta_with_lr
 
-        var_update = state_ops.assign(
-            var, var_t, use_locking=self._use_locking
-        )
+        var_update = state_ops.assign(var, var_t, use_locking=self._use_locking)
         updates = [var_update, m_t, v_t]
         return control_flow_ops.group(*updates)
 
@@ -209,16 +200,14 @@ class AdamWeightDecayOptimizer(OptimizerV2):
         config = super(AdamWeightDecayOptimizer, self).get_config()
         config.update(
             {
-                "learning_rate": self._serialize_hyperparameter(
-                    "learning_rate"
-                ),
+                "learning_rate": self._serialize_hyperparameter("learning_rate"),
                 "beta_1": self._serialize_hyperparameter("beta_1"),
                 "beta_2": self._serialize_hyperparameter("beta_2"),
                 "weight_decay_rate": self._serialize_hyperparameter(
                     "weight_decay_rate"
                 ),
                 "epsilon": self.epsilon,
-                "exclude_from_weight_decay":self.exclude_from_weight_decay,
+                "exclude_from_weight_decay": self.exclude_from_weight_decay,
             }
         )
         return config

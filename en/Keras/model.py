@@ -17,11 +17,10 @@ class AlbertLayer(tf.keras.layers.Layer):
         self.albert_hub = albert_hub
         super(AlbertLayer, self).__init__(**kwargs)
         tf.compat.v1.logging.debug(f"Model built: {self.built}")
-        tf.compat.v1.logging.debug(f"Name scope: {tf.get_default_graph().get_name_scope()}")
-        self.albert = hub.Module(
-            self.albert_hub,
-            trainable=self.trainable,
+        tf.compat.v1.logging.debug(
+            f"Name scope: {tf.get_default_graph().get_name_scope()}"
         )
+        self.albert = hub.Module(self.albert_hub, trainable=self.trainable,)
         albert_vars = self.albert.variables
         if self.trainable:
             self._trainable_weights.extend(
@@ -45,19 +44,18 @@ class AlbertLayer(tf.keras.layers.Layer):
         albert_inputs = dict(
             input_ids=input_ids, input_mask=input_mask, segment_ids=segment_ids
         )
-        result = self.albert(
-            inputs=albert_inputs, signature="tokens", as_dict=True
-        )["pooled_output"]
+        result = self.albert(inputs=albert_inputs, signature="tokens", as_dict=True)[
+            "pooled_output"
+        ]
         tf.logging.debug(result)
 
         return result
 
     def get_config(self):
-        config = super(AlbertLayer,self).get_config()
-        config.update({
-            "train_layers":self.trainable,
-            "albert_hub":self.albert_hub,
-            })
+        config = super(AlbertLayer, self).get_config()
+        config.update(
+            {"train_layers": self.trainable, "albert_hub": self.albert_hub,}
+        )
         return config
 
 
@@ -97,13 +95,11 @@ class StsbHead(tf.keras.layers.Layer):
         output_dropout = self.dropout(inputs, training=training)
         predictions = self.dense(output_dropout)
         return predictions
-    
+
     def get_config(self):
         config = super(StsbHead, self).get_config()
-        config.update({
-            "layer_size":self.layer_size
-            })
-        config.pop('trainable',None)
+        config.update({"layer_size": self.layer_size})
+        config.pop("trainable", None)
         return config
 
 
@@ -116,9 +112,7 @@ class StsbModel(tf.keras.Model):
             pretrain_train_mode: train layers in pretrain model
         """
         super(StsbModel, self).__init__()
-        self.pretrained_layer = AlbertLayer(
-            config, train_layers=pretrain_train_mode
-        )
+        self.pretrained_layer = AlbertLayer(config, train_layers=pretrain_train_mode)
         hidden_size = 768
         self.custom_head = StsbHead(hidden_size)
 

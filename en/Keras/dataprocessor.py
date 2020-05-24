@@ -104,8 +104,7 @@ class StsbProcessor(DataProcessor):
             List[InputExample]:
         """
         return self._create_examples(
-            self._read_tsv(os.path.join(data_dir, folder_name, "train.tsv")),
-            "train",
+            self._read_tsv(os.path.join(data_dir, folder_name, "train.tsv")), "train",
         )
 
     def get_dev_examples(
@@ -122,8 +121,7 @@ class StsbProcessor(DataProcessor):
             List[InputExample]:
         """
         return self._create_examples(
-            self._read_tsv(os.path.join(data_dir, folder_name, "dev.tsv")),
-            "dev",
+            self._read_tsv(os.path.join(data_dir, folder_name, "dev.tsv")), "dev",
         )
 
     def get_test_examples(
@@ -140,16 +138,13 @@ class StsbProcessor(DataProcessor):
             List[InputExample]:
         """
         return self._create_examples(
-            self._read_tsv(os.path.join(data_dir, folder_name, "test.tsv")),
-            "test",
+            self._read_tsv(os.path.join(data_dir, folder_name, "test.tsv")), "test",
         )
 
     def get_labels(self) -> List[None]:
         return [None]
 
-    def _create_examples(
-        self, lines: List[str], set_type: str
-    ) -> List[InputExample]:
+    def _create_examples(self, lines: List[str], set_type: str) -> List[InputExample]:
         """
         Create training examples.
 
@@ -172,8 +167,6 @@ class StsbProcessor(DataProcessor):
             else:
                 label = 0
             examples.append(
-                InputExample(
-                    guid=guid, text_a=text_a, text_b=text_b, label=label
-                )
+                InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label)
             )
         return examples

@@ -2,6 +2,7 @@ from typing import Tuple
 import os
 import tensorflow as tf
 from tensorflow.compat.v1 import logging
+import tensorflow.keras.backend as K
 from model import StsbModel, AlbertLayer, StsbHead
 from dataprocessor import DataProcessor, StsbProcessor
 from preprocess import (
@@ -30,9 +31,9 @@ def train_model(config: dict):
     train_examples = stsb_processor.get_train_examples(config["data_dir"])
     config["training_steps"] = len(train_examples)
     # TPU init code
-    if config.get('use_tpu',False):
+    if config.get("use_tpu", False):
         resolver = tf.distribute.cluster_resolver.TPUClusterResolver(
-            tpu=config['tpu_name']
+            tpu=config["tpu_name"]
         )
         tf.config.experimental_connect_to_cluster(resolver)
         tf.tpu.experimental.initialize_tpu_system(resolver)
@@ -41,60 +42,83 @@ def train_model(config: dict):
         strategy = tf.distribute.MirroredStrategy()
     metrics = [
         "MeanSquaredError",
-        #pearson_correlation_metric_fn,
+        #        pearson_correlation_metric_fn,
     ]
     seq_len = config.get("sequence_len", 512)
     with strategy.scope():
         inputs = {}
-        inputs['input_ids'] = tf.keras.Input(shape = (seq_len,), dtype=tf.int32)
-        inputs['input_mask'] = tf.keras.Input(shape = (seq_len,), dtype = tf.int32)
-        inputs['segment_ids'] = tf.keras.Input(shape = (seq_len,), dtype = tf.int32)
-        #albert_outputs = AlbertLayer(albert_hub = config.get('albert_hub_module_handle',''))(list(inputs.values()))
-        albert_layer = hub.KerasLayer(config.get('albert_hub_module_handle',''), trainable=True,signature= "tokens", output_key='pooled_output')
-        albert_trainable_vars = [var for var in albert_layer.variables if "/cls/" not in var.name]
+        inputs["input_ids"] = tf.keras.Input(shape=(seq_len,), dtype=tf.int32)
+        inputs["input_mask"] = tf.keras.Input(shape=(seq_len,), dtype=tf.int32)
+        inputs["segment_ids"] = tf.keras.Input(shape=(seq_len,), dtype=tf.int32)
+        albert_layer = hub.KerasLayer(
+            config.get("albert_hub_module_handle", ""),
+            trainable=True,
+            signature="tokens",
+            signature_outputs_as_dict = True,
+        )
+        albert_trainable_vars = [
+            var for var in albert_layer.variables if "/cls/" not in var.name
+        ]
         albert_layer._trainable_weights.extend(albert_trainable_vars)
         for var in albert_trainable_vars:
             albert_layer._non_trainable_weights.remove(var)
-        albert_outputs = albert_layer(inputs)
-        dropout = tf.keras.layers.Dropout(rate=0.1, name="dropout")(albert_outputs)
+            pass
+        dropout_layer = tf.keras.layers.Dropout(rate=0.1, name="dropout_layer")
         kernel_init = tf.keras.initializers.TruncatedNormal(stddev=0.02)
         bias_init = tf.keras.initializers.zeros()
-        dense_output = tf.keras.layers.Dense(
-                units = 1,
-                kernel_initializer=kernel_init,
-                bias_initializer=bias_init,
-                name="output_weights")(dropout)
-        output = tf.squeeze(dense_output, [-1])
-        logging.debug(output)
-        model = tf.keras.Model(inputs=inputs,outputs=output)
-        optimizer = _create_optimizer(config)
+        dense_layer = tf.keras.layers.Dense(
+            units=1,
+            kernel_initializer=kernel_init,
+            bias_initializer=bias_init,
+            name="dense_layer",
+        )
+        albert_outputs = albert_layer(inputs)
+        logging.debug(albert_outputs)
+        dropout = dropout_layer(albert_outputs['pooled_output'])
+        output = dense_layer(dropout)
+        model = tf.keras.Model(inputs, output)
+
+    logging.debug(model.summary())
+    optimizer = _create_optimizer(config)
     model.compile(
         optimizer=optimizer,
-        loss=tf.keras.losses.MeanSquaredError(),
+        loss=mean_squared_error,
         metrics=metrics,
         shuffle=False,
         distribute=strategy,
     )
-    logging.debug(model.summary())
 
-    train_file, eval_file, test_file = _create_train_eval_input_files(config, stsb_processor)
-    train_dataset = file_based_input_fn_builder(
-        train_file, seq_len, is_training=True,
+    train_file, eval_file, test_file = _create_train_eval_input_files(
+        config, stsb_processor
     )
-    eval_dataset = file_based_input_fn_builder(
-        eval_file, seq_len, is_training=False,
-    )
-    test_dataset = file_based_input_fn_builder(
-        test_file, seq_len, is_training=False,
-    )
+    train_dataset = file_based_input_fn_builder(train_file, seq_len, is_training=True,)
+    eval_dataset = file_based_input_fn_builder(eval_file, seq_len, is_training=False,)
+    test_dataset = file_based_input_fn_builder(test_file, seq_len, is_training=False,)
     log_dir = "logs/fit/" + datetime.now().strftime("%Y%m%d-%H%M%S")
-    tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=0)
+    tensorboard_callback = tf.keras.callbacks.TensorBoard(
+        log_dir=log_dir, histogram_freq=0
+    )
     model.fit(
-        train_dataset,
+        x=train_dataset,
         epochs=config.get("num_train_epochs", 5),
-        steps_per_epoch=len(stsb_processor.get_train_examples(config['data_dir'])),
+        steps_per_epoch=len(stsb_processor.get_train_examples(config["data_dir"])),
         validation_data=eval_dataset,
-        callbacks = [tensorboard_callback]
+        #callbacks=[tensorboard_callback],
+    )
+
+
+def mean_squared_error(y_true, y_pred):
+    #import pdb
+    #pdb.set_trace()
+    if y_true.shape[-1].value is None:
+        y_true = K.cast(y_true, y_pred.dtype)
+        y_true = tf.ensure_shape(y_true, y_pred.shape)
+    return tf.math.reduce_mean(
+        tf.python.math_ops.squared_difference(
+            tf.python.ops.convert_to_tensor_v2(y_pred),
+            tf.python.math_ops.cast(y_true, y_pred.dtype),
+        ),
+        axis=-1,
     )
 
 
@@ -194,7 +218,7 @@ def _create_optimizer(config: dict) -> AdamWeightDecayOptimizer:
     epsilon = 1e-6
     exclude_from_weight_decay = ["LayerNorm", "layer_norm", "bias"]
     training_len = config.get("training_steps", 5000)
-    num_train_steps = int((training_len/batch_size)*train_epochs)
+    num_train_steps = int((training_len / batch_size) * train_epochs)
     params_log = {
         "Initial learning rate": init_lr,
         "Number of training steps": num_train_steps,
@@ -208,7 +232,7 @@ def _create_optimizer(config: dict) -> AdamWeightDecayOptimizer:
     }
     logging.debug("Optimizer Parameters")
     logging.debug("=" * 20)
-    for key,value in params_log.items():
+    for key, value in params_log.items():
         logging.debug(f"{key}: {value}")
     learning_rate = PolynomialDecayWarmup(
         initial_learning_rate=init_lr,
@@ -217,7 +241,7 @@ def _create_optimizer(config: dict) -> AdamWeightDecayOptimizer:
         end_learning_rate=0.0,
     )
 
-    tf.keras.utils.get_custom_objects()['PolynomialDecayWarmup'] = PolynomialDecayWarmup
+    tf.keras.utils.get_custom_objects()["PolynomialDecayWarmup"] = PolynomialDecayWarmup
     return AdamWeightDecayOptimizer(
         learning_rate=learning_rate,
         weight_decay_rate=weight_decay_rate,
@@ -231,10 +255,7 @@ def _create_optimizer(config: dict) -> AdamWeightDecayOptimizer:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--config_file",
-        help="config file path",
-        default="./config.yaml",
-        type=str,
+        "--config_file", help="config file path", default="./config.yaml", type=str,
     )
     args = parser.parse_args()
     config = read_yaml_config(args.config_file)
