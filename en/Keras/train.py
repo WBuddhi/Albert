@@ -47,9 +47,9 @@ def train_model(config: dict):
     seq_len = config.get("sequence_len", 512)
     with strategy.scope():
         inputs = {}
-        inputs["input_ids"] = tf.keras.Input(shape=(seq_len,), dtype=tf.int32)
-        inputs["input_mask"] = tf.keras.Input(shape=(seq_len,), dtype=tf.int32)
-        inputs["segment_ids"] = tf.keras.Input(shape=(seq_len,), dtype=tf.int32)
+        inputs["input_ids"] = tf.keras.Input(shape=(seq_len,), dtype=tf.int32, name = "input_ids")
+        inputs["input_mask"] = tf.keras.Input(shape=(seq_len,), dtype=tf.int32, name = "input_mask")
+        inputs["segment_ids"] = tf.keras.Input(shape=(seq_len,), dtype=tf.int32, name = "segment_ids")
         albert_layer = hub.KerasLayer(
             config.get("albert_hub_module_handle", ""),
             trainable=True,
