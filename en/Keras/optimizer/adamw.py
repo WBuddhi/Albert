@@ -5,7 +5,7 @@ from tensorflow.python.ops import array_ops
 from tensorflow.python.ops import control_flow_ops
 from tensorflow.python.ops import math_ops
 from tensorflow.python.ops import state_ops
-import tensorflow as tf
+from tensorflow.compat.v1 import logging
 
 
 class AdamWeightDecayOptimizer(OptimizerV2):
@@ -18,7 +18,7 @@ class AdamWeightDecayOptimizer(OptimizerV2):
         beta_1: float = 0.9,
         beta_2: float = 0.999,
         epsilon: float = 1e-6,
-        exclude_from_weight_decay: list = None,
+        exclude_from_weight_decay: list = ["LayerNorm", "layer_norm", "bias"],
         name: str = "AdamWeightDecayOptimizer",
     ):
         """
@@ -42,6 +42,8 @@ class AdamWeightDecayOptimizer(OptimizerV2):
         self.epsilon = epsilon or backend_config.epsilon()
         self.exclude_from_weight_decay = exclude_from_weight_decay
         self._use_locking = False
+        logging.debug(f"exclude layers: {self.exclude_from_weight_decay}")
+        
 
     def _create_slots(self, var_list):
         # Create slots for the first and second moments.
@@ -119,7 +121,7 @@ class AdamWeightDecayOptimizer(OptimizerV2):
         var_delta = m_t / (math_ops.sqrt(v_t) + epsilon_t)
 
         # Weight decays
-        tf.logging.debug(f"Optimizer Dense layer: {var.name}")
+        logging.debug(f"Optimizer Dense layer: {var.name}")
         if var.name not in self.exclude_from_weight_decay:
             var_delta += w_d * var
 
@@ -178,7 +180,7 @@ class AdamWeightDecayOptimizer(OptimizerV2):
 
         var_t = math_ops.sub(var, self.eta_t * lr_t * var_delta)
 
-        tf.logging.debug(f"Optimizer Sparce layer: {var.name}")
+        logging.debug(f"Optimizer Sparce layer: {var.name}")
         # Weight decays
         if var.name not in self.exclude_from_weight_decay:
             var_delta += w_d * var
@@ -212,10 +214,11 @@ class AdamWeightDecayOptimizer(OptimizerV2):
                 ),
                 "beta_1": self._serialize_hyperparameter("beta_1"),
                 "beta_2": self._serialize_hyperparameter("beta_2"),
-                "epsilon": self.epsilon,
-                "weight_decay": self._serialize_hyperparameter(
+                "weight_decay_rate": self._serialize_hyperparameter(
                     "weight_decay_rate"
                 ),
+                "epsilon": self.epsilon,
+                "exclude_from_weight_decay":self.exclude_from_weight_decay,
             }
         )
         return config

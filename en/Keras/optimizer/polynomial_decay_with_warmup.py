@@ -3,9 +3,11 @@ from tensorflow.python.ops import control_flow_ops
 from tensorflow.python.ops import math_ops
 from tensorflow.python.util.tf_export import keras_export
 from tensorflow.keras.optimizers.schedules import LearningRateSchedule
+from tensorflow.compat.v1 import logging
+import tensorflow as tf
 
 
-@keras_export("keras.optimizers.schedules.PolynomialDecay")
+@keras_export("keras.optimizers.schedules.PolynomialDecayWarmup")
 class PolynomialDecayWarmup(LearningRateSchedule):
     """A LearningRateSchedule that uses a polynomial decay schedule."""
 
@@ -18,7 +20,7 @@ class PolynomialDecayWarmup(LearningRateSchedule):
         power: float = 1.0,
         start_warmup_step: int = 0,
         cycle: bool = False,
-        name: str = "PolynomialDecayWithWarmup",
+        name: str = "PolynomialDecayWarmup",
     ):
         """
         Reimplementation of PolynomialDecay learning rate scheduler with warm
@@ -52,7 +54,7 @@ class PolynomialDecayWarmup(LearningRateSchedule):
         Args:
             step (int): step
         """
-        with ops.name_scope_v2(self.name or "PolynomialDecay") as name:
+        with ops.name_scope_v2(self.name or "PolynomialDecayWithWarmup") as name:
             initial_learning_rate = ops.convert_to_tensor_v2(
                 self.initial_learning_rate, name="initial_learning_rate"
             )
@@ -91,31 +93,49 @@ class PolynomialDecayWarmup(LearningRateSchedule):
             warmup_percent_done = math_ops.divide(
                 global_step_warmup, warm_up_steps
             )
-            if global_step_warmup < warm_up_steps:
-                return math_ops.multiply(
-                    initial_learning_rate, warmup_percent_done, name=name
-                )
-            else:
-                return math_ops.add(
+            result = tf.cond(
+                global_step_warmup > warm_up_steps,
+                lambda: math_ops.multiply(
+                    initial_learning_rate, warmup_percent_done, name='warmup_lr'
+                ),
+                lambda: math_ops.add(
                     math_ops.multiply(
                         initial_learning_rate - end_learning_rate,
                         math_ops.pow(1 - p, power),
                     ),
                     end_learning_rate,
-                    name=name,
-                )
+                    name='decayed_lr',
+                ))
+            return result
+
+
+
+#            if greater_than(global_step_warmup, warm_up_steps):
+#                return math_ops.multiply(
+#                    initial_learning_rate, warmup_percent_done, name=name
+#                )
+#            else:
+#                return math_ops.add(
+#                    math_ops.multiply(
+#                        initial_learning_rate - end_learning_rate,
+#                        math_ops.pow(1 - p, power),
+#                    ),
+#                    end_learning_rate,
+#                    name=name,
+#                )
 
     def get_config(self):
         """
         Returns config for restoration.
         """
-        return {
-            "initial_learning_rate": self.initial_learning_rate,
-            "decay_steps": self.decay_steps,
-            "num_warmup_steps": self.warm_up_steps,
-            "end_learning_rate": self.end_learning_rate,
-            "power": self.power,
-            "start_warmup_step": self.start_warmup_step,
-            "cycle": self.cycle,
-            "name": self.name,
-        }
+        config = {
+                "initial_learning_rate": self.initial_learning_rate,
+                "decay_steps": self.decay_steps,
+                "num_warmup_steps": self.warm_up_steps,
+                "end_learning_rate": self.end_learning_rate,
+                "power": self.power,
+                "start_warmup_step": self.start_warmup_step,
+                "cycle": self.cycle,
+                "name": self.name,
+            }
+        return config
