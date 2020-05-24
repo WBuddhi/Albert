@@ -76,6 +76,7 @@ def train_model(config: dict):
         logging.debug(albert_outputs)
         dropout = dropout_layer(albert_outputs['pooled_output'])
         output = dense_layer(dropout)
+        output = tf.squeeze(output, [-1])
         model = tf.keras.Model(inputs, output)
 
     logging.debug(model.summary())
@@ -101,9 +102,9 @@ def train_model(config: dict):
     model.fit(
         x=train_dataset,
         epochs=config.get("num_train_epochs", 5),
-        steps_per_epoch=len(stsb_processor.get_train_examples(config["data_dir"])),
+        steps_per_epoch=int(len(stsb_processor.get_train_examples(config["data_dir"]))/32),
         validation_data=eval_dataset,
-        #callbacks=[tensorboard_callback],
+        callbacks=[tensorboard_callback],
     )
 
 
@@ -208,10 +209,10 @@ def _create_optimizer(config: dict) -> AdamWeightDecayOptimizer:
         AdamWeightDecayOptimizer:
     """
     logging.debug("Creating optimizer.")
-    init_lr = config.get("learning_rate", 0.01)
+    init_lr = float(config.get("learning_rate", 5e-5))
     batch_size = config.get("train_batch_size", 32)
     train_epochs = config.get("num_train_epochs", 5)
-    num_warmup_steps = config.get("warm_up_steps", 0)
+    num_warmup_steps = config.get("warmup_steps", 0)
     weight_decay_rate = 0.01
     beta_1 = 0.9
     beta_2 = 0.999
