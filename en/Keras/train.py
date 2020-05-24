@@ -82,7 +82,7 @@ def train_model(config: dict):
     logging.debug(model.summary())
     optimizer = _create_optimizer(config)
     model.compile(
-        optimizer=optimizer,
+        optimizer='Adam',
         loss=mean_squared_error,
         metrics=metrics,
         shuffle=False,

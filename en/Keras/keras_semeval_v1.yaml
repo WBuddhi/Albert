@@ -8,7 +8,7 @@ albert_hub_module_handle: gs://semeval-checkpoints/sts-keras/albert_model_hub
 # Training params
 spm_model_file: /home/buddhi/albert_model_hub/assets/30k-clean.model
 do_train: true
-learning_rate: 5e-15
+learning_rate: 5e-5
 do_eval: true
 do_predict: true
 do_lower_case: true
