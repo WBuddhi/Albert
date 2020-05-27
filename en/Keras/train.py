@@ -26,8 +26,11 @@ def train_model(config: dict):
         config (dict): config
     """
 
+    tf.enable_eager_execution()
     tf.compat.v1.logging.set_verbosity(tf.logging.DEBUG)
-    stsb_processor = StsbProcessor(config["spm_model_file"], config["do_lower_case"])
+    stsb_processor = StsbProcessor(
+        config["spm_model_file"], config["do_lower_case"]
+    )
     train_examples = stsb_processor.get_train_examples(config["data_dir"])
     config["training_steps"] = len(train_examples)
     # TPU init code
@@ -47,22 +50,25 @@ def train_model(config: dict):
     seq_len = config.get("sequence_len", 512)
     with strategy.scope():
         inputs = {}
-        inputs["input_ids"] = tf.keras.Input(shape=(seq_len,), dtype=tf.int32, name = "input_ids")
-        inputs["input_mask"] = tf.keras.Input(shape=(seq_len,), dtype=tf.int32, name = "input_mask")
-        inputs["segment_ids"] = tf.keras.Input(shape=(seq_len,), dtype=tf.int32, name = "segment_ids")
-        albert_layer = hub.KerasLayer(
-            config.get("albert_hub_module_handle", ""),
-            trainable=True,
-            signature="tokens",
-            signature_outputs_as_dict = True,
+        inputs["input_word_ids"] = tf.keras.Input(
+            shape=(seq_len,), dtype=tf.int32, name="input_word_ids"
         )
-        albert_trainable_vars = [
-            var for var in albert_layer.variables if "/cls/" not in var.name
-        ]
-        albert_layer._trainable_weights.extend(albert_trainable_vars)
-        for var in albert_trainable_vars:
-            albert_layer._non_trainable_weights.remove(var)
-            pass
+        inputs["input_mask"] = tf.keras.Input(
+            shape=(seq_len,), dtype=tf.int32, name="input_mask"
+        )
+        inputs["segment_ids"] = tf.keras.Input(
+            shape=(seq_len,), dtype=tf.int32, name="segment_ids"
+        )
+        albert_layer = hub.KerasLayer(
+            config.get("albert_hub_module_handle", ""), trainable=True,
+        )
+        # albert_trainable_vars = [
+        #    var for var in albert_layer.variables if "/cls/" not in var.name
+        # ]
+        # albert_layer._trainable_weights.extend(albert_trainable_vars)
+        # for var in albert_trainable_vars:
+        #    albert_layer._non_trainable_weights.remove(var)
+        #    pass
         dropout_layer = tf.keras.layers.Dropout(rate=0.1, name="dropout_layer")
         kernel_init = tf.keras.initializers.TruncatedNormal(stddev=0.02)
         bias_init = tf.keras.initializers.zeros()
@@ -72,29 +78,36 @@ def train_model(config: dict):
             bias_initializer=bias_init,
             name="dense_layer",
         )
-        albert_outputs = albert_layer(inputs)
-        logging.debug(albert_outputs)
-        dropout = dropout_layer(albert_outputs['pooled_output'])
+        albert_pooled_output, _ = albert_layer(list(inputs.values()))
+        logging.debug(albert_pooled_output)
+        dropout = dropout_layer(albert_pooled_output)
         output = dense_layer(dropout)
         output = tf.squeeze(output, [-1])
         model = tf.keras.Model(inputs, output)
 
-    logging.debug(model.summary())
-    optimizer = _create_optimizer(config)
-    model.compile(
-        optimizer='Adam',
-        loss=mean_squared_error,
-        metrics=metrics,
-        shuffle=False,
-        distribute=strategy,
-    )
+        logging.debug(model.summary())
+        optimizer = _create_optimizer(config)
+        model.compile(
+            optimizer="Adam",
+            loss=mean_squared_error,
+            metrics=metrics,
+            shuffle=False,
+            #distribute=strategy,
+            run_eager = True,
+        )
 
     train_file, eval_file, test_file = _create_train_eval_input_files(
         config, stsb_processor
     )
-    train_dataset = file_based_input_fn_builder(train_file, seq_len, is_training=True,)
-    eval_dataset = file_based_input_fn_builder(eval_file, seq_len, is_training=False,)
-    test_dataset = file_based_input_fn_builder(test_file, seq_len, is_training=False,)
+    train_dataset = file_based_input_fn_builder(
+        train_file, seq_len, is_training=True,
+    )
+    eval_dataset = file_based_input_fn_builder(
+        eval_file, seq_len, is_training=False,
+    )
+    test_dataset = file_based_input_fn_builder(
+        test_file, seq_len, is_training=False,
+    )
     log_dir = "logs/fit/" + datetime.now().strftime("%Y%m%d-%H%M%S")
     tensorboard_callback = tf.keras.callbacks.TensorBoard(
         log_dir=log_dir, histogram_freq=0
@@ -102,18 +115,15 @@ def train_model(config: dict):
     model.fit(
         x=train_dataset,
         epochs=config.get("num_train_epochs", 5),
-        steps_per_epoch=int(len(stsb_processor.get_train_examples(config["data_dir"]))/32),
+        steps_per_epoch=int(
+            len(stsb_processor.get_train_examples(config["data_dir"])) / 32
+        ),
         validation_data=eval_dataset,
         callbacks=[tensorboard_callback],
     )
 
 
 def mean_squared_error(y_true, y_pred):
-    #import pdb
-    #pdb.set_trace()
-    if y_true.shape[-1].value is None:
-        y_true = K.cast(y_true, y_pred.dtype)
-        y_true = tf.ensure_shape(y_true, y_pred.shape)
     return tf.math.reduce_mean(
         tf.python.math_ops.squared_difference(
             tf.python.ops.convert_to_tensor_v2(y_pred),
@@ -176,9 +186,10 @@ def _get_tokenizer(config: dict) -> FullTokenizer:
     Returns:
         FullTokenizer:
     """
-    return FullTokenizer.from_hub_module(
-        hub_module=config.get("albert_hub_module_handle", None),
-        use_spm=config.get("spm_model_file", False),
+    return FullTokenizer(
+        vocab_file=None,
+        do_lower_case=config.get("do_lower_case", True),
+        spm_model_file=config.get("spm_model_file", ""),
     )
 
 
@@ -242,7 +253,9 @@ def _create_optimizer(config: dict) -> AdamWeightDecayOptimizer:
         end_learning_rate=0.0,
     )
 
-    tf.keras.utils.get_custom_objects()["PolynomialDecayWarmup"] = PolynomialDecayWarmup
+    tf.keras.utils.get_custom_objects()[
+        "PolynomialDecayWarmup"
+    ] = PolynomialDecayWarmup
     return AdamWeightDecayOptimizer(
         learning_rate=learning_rate,
         weight_decay_rate=weight_decay_rate,
@@ -256,7 +269,10 @@ def _create_optimizer(config: dict) -> AdamWeightDecayOptimizer:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--config_file", help="config file path", default="./config.yaml", type=str,
+        "--config_file",
+        help="config file path",
+        default="./config.yaml",
+        type=str,
     )
     args = parser.parse_args()
     config = read_yaml_config(args.config_file)

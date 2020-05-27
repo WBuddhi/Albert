@@ -54,7 +54,9 @@ class PolynomialDecayWarmup(LearningRateSchedule):
         Args:
             step (int): step
         """
-        with ops.name_scope_v2(self.name or "PolynomialDecayWithWarmup") as name:
+        with ops.name_scope_v2(
+            self.name or "PolynomialDecayWithWarmup"
+        ) as name:
             initial_learning_rate = ops.convert_to_tensor_v2(
                 self.initial_learning_rate, name="initial_learning_rate"
             )
@@ -72,9 +74,13 @@ class PolynomialDecayWarmup(LearningRateSchedule):
                 multiplier = control_flow_ops.cond(
                     math_ops.equal(global_step_recomp, 0),
                     lambda: 1.0,
-                    lambda: math_ops.ceil(global_step_recomp / self.decay_steps),
+                    lambda: math_ops.ceil(
+                        global_step_recomp / self.decay_steps
+                    ),
                 )
-                decay_steps_recomp = math_ops.multiply(decay_steps_recomp, multiplier)
+                decay_steps_recomp = math_ops.multiply(
+                    decay_steps_recomp, multiplier
+                )
             else:
                 # Make sure that the global_step used is not bigger than decay_steps.
                 global_step_recomp = math_ops.minimum(
@@ -83,12 +89,18 @@ class PolynomialDecayWarmup(LearningRateSchedule):
 
             p = math_ops.divide(global_step_recomp, decay_steps_recomp)
 
-            global_step_warmup = math_ops.sub(global_step_recomp, start_warmup_step)
-            warmup_percent_done = math_ops.divide(global_step_warmup, warm_up_steps)
+            global_step_warmup = math_ops.sub(
+                global_step_recomp, start_warmup_step
+            )
+            warmup_percent_done = math_ops.divide(
+                global_step_warmup, warm_up_steps
+            )
             result = tf.cond(
                 global_step_warmup > warm_up_steps,
                 lambda: math_ops.multiply(
-                    initial_learning_rate, warmup_percent_done, name="warmup_lr"
+                    initial_learning_rate,
+                    warmup_percent_done,
+                    name="warmup_lr",
                 ),
                 lambda: math_ops.add(
                     math_ops.multiply(

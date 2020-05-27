@@ -44,9 +44,9 @@ class AlbertLayer(tf.keras.layers.Layer):
         albert_inputs = dict(
             input_ids=input_ids, input_mask=input_mask, segment_ids=segment_ids
         )
-        result = self.albert(inputs=albert_inputs, signature="tokens", as_dict=True)[
-            "pooled_output"
-        ]
+        result = self.albert(
+            inputs=albert_inputs, signature="tokens", as_dict=True
+        )["pooled_output"]
         tf.logging.debug(result)
 
         return result
@@ -112,7 +112,9 @@ class StsbModel(tf.keras.Model):
             pretrain_train_mode: train layers in pretrain model
         """
         super(StsbModel, self).__init__()
-        self.pretrained_layer = AlbertLayer(config, train_layers=pretrain_train_mode)
+        self.pretrained_layer = AlbertLayer(
+            config, train_layers=pretrain_train_mode
+        )
         hidden_size = 768
         self.custom_head = StsbHead(hidden_size)
 

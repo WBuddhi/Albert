@@ -68,7 +68,10 @@ def encode_pieces(sp_model, text, return_unicode=True, sample=False):
             cur_pieces = sp_model.EncodeAsPieces(
                 six.ensure_binary(piece[:-1]).replace(SPIECE_UNDERLINE, b"")
             )
-            if piece[0] != SPIECE_UNDERLINE and cur_pieces[0][0] == SPIECE_UNDERLINE:
+            if (
+                piece[0] != SPIECE_UNDERLINE
+                and cur_pieces[0][0] == SPIECE_UNDERLINE
+            ):
                 if len(cur_pieces[0]) == 1:
                     cur_pieces = cur_pieces[1:]
                 else:
@@ -186,7 +189,9 @@ class FullTokenizer(object):
         self.sp_model = None
         if spm_model_file:
             self.sp_model = spm.SentencePieceProcessor()
-            self.sp_model.Load("/home/buddhi/albert_model_hub/assets/30k-clean.model")
+            self.sp_model.Load(
+                "/home/buddhi/albert_model_hub/assets/30k-clean.model"
+            )
             # self.sp_model.Load(spm_model_file)
             # Note(mingdachen): For the purpose of consisent API, we are
             # generating a vocabulary for the sentence piece tokenizer.
@@ -230,7 +235,9 @@ class FullTokenizer(object):
 
     def tokenize(self, text):
         if self.sp_model:
-            split_tokens = encode_pieces(self.sp_model, text, return_unicode=False)
+            split_tokens = encode_pieces(
+                self.sp_model, text, return_unicode=False
+            )
         else:
             split_tokens = []
             for token in self.basic_tokenizer.tokenize(text):
@@ -241,7 +248,10 @@ class FullTokenizer(object):
 
     def convert_tokens_to_ids(self, tokens):
         if self.sp_model:
-            return [self.sp_model.PieceToId(printable_text(token)) for token in tokens]
+            return [
+                self.sp_model.PieceToId(printable_text(token))
+                for token in tokens
+            ]
         else:
             return convert_by_vocab(self.vocab, tokens)
 

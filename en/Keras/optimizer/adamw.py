@@ -6,6 +6,7 @@ from tensorflow.python.ops import control_flow_ops
 from tensorflow.python.ops import math_ops
 from tensorflow.python.ops import state_ops
 from tensorflow.compat.v1 import logging
+import re
 
 
 class AdamWeightDecayOptimizer(OptimizerV2):
@@ -58,7 +59,9 @@ class AdamWeightDecayOptimizer(OptimizerV2):
         )
 
         local_step = math_ops.cast(self.iterations + 1, var_dtype)
-        w_d = array_ops.identity(self._get_hyper("weight_decay_rate", var_dtype))
+        w_d = array_ops.identity(
+            self._get_hyper("weight_decay_rate", var_dtype)
+        )
         beta_1_t = array_ops.identity(self._get_hyper("beta_1", var_dtype))
         beta_2_t = array_ops.identity(self._get_hyper("beta_2", var_dtype))
         beta_1_power = math_ops.pow(beta_1_t, local_step)
@@ -79,6 +82,16 @@ class AdamWeightDecayOptimizer(OptimizerV2):
                 one_minus_beta_2_t=1 - beta_2_t,
             )
         )
+
+    def _do_use_weight_decay(self, var_name):
+        """Whether to use L2 weight decay for `param_name`."""
+        if not self.weight_decay_rate:
+            return False
+        if self.exclude_from_weight_decay:
+            for r in self.exclude_from_weight_decay:
+                if re.search(r, var_name) is not None:
+                    return False
+        return True
 
     def _resource_apply_dense(self, grad, var, apply_state):
         """
@@ -106,7 +119,9 @@ class AdamWeightDecayOptimizer(OptimizerV2):
         lr_t = coefficients["lr_t"]
 
         m_t = state_ops.assign(
-            m, beta_1_t * m + (1.0 - beta_1_t) * grad, use_locking=self._use_locking,
+            m,
+            beta_1_t * m + (1.0 - beta_1_t) * grad,
+            use_locking=self._use_locking,
         )
         v_t = state_ops.assign(
             v,
@@ -117,13 +132,16 @@ class AdamWeightDecayOptimizer(OptimizerV2):
 
         # Weight decays
         logging.debug(f"Optimizer Dense layer: {var.name}")
-        if var.name not in self.exclude_from_weight_decay:
+        if self._do_use_weight_decay(var.name):
             var_delta += w_d * var
+            logging.debug(f"Not applying decay on {var.name}")
 
         var_delta_with_lr = lr_t * var_delta
         var_t = var - var_delta_with_lr
 
-        var_update = state_ops.assign(var, var_t, use_locking=self._use_locking)
+        var_update = state_ops.assign(
+            var, var_t, use_locking=self._use_locking
+        )
         updates = [var_update, m_t, v_t]
         return control_flow_ops.group(*updates)
 
@@ -175,13 +193,16 @@ class AdamWeightDecayOptimizer(OptimizerV2):
 
         logging.debug(f"Optimizer Sparce layer: {var.name}")
         # Weight decays
-        if var.name not in self.exclude_from_weight_decay:
+        if self._do_use_weight_decay(var.name):
             var_delta += w_d * var
+            logging.debug(f"Not applying decay on {var.name}")
 
         var_delta_with_lr = lr_t * var_delta
         var_t = var - var_delta_with_lr
 
-        var_update = state_ops.assign(var, var_t, use_locking=self._use_locking)
+        var_update = state_ops.assign(
+            var, var_t, use_locking=self._use_locking
+        )
         updates = [var_update, m_t, v_t]
         return control_flow_ops.group(*updates)
 
@@ -200,7 +221,9 @@ class AdamWeightDecayOptimizer(OptimizerV2):
         config = super(AdamWeightDecayOptimizer, self).get_config()
         config.update(
             {
-                "learning_rate": self._serialize_hyperparameter("learning_rate"),
+                "learning_rate": self._serialize_hyperparameter(
+                    "learning_rate"
+                ),
                 "beta_1": self._serialize_hyperparameter("beta_1"),
                 "beta_2": self._serialize_hyperparameter("beta_2"),
                 "weight_decay_rate": self._serialize_hyperparameter(
