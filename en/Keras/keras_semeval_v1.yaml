@@ -4,9 +4,9 @@ data_dir: /home/buddhi/Albert/en/Data/
 output_dir: gs://semeval-checkpoints/sts-keras/
 cached_dir: gs://semeval-checkpoints/sts-keras/cache
 # Model hub url
-albert_hub_module_handle: gs://semeval-checkpoints/sts-keras/albert_model_hub
+albert_hub_module_handle: gs://semeval-checkpoints/sts-keras/albert_model_hub_v2
 # Training params
-spm_model_file: /home/buddhi/albert_model_hub/assets/30k-clean.model
+spm_model_file: /home/buddhi/Albert/en/Keras/albert_module_hub_v2/assets/30k-clean.model
 do_train: true
 learning_rate: 5e-5
 do_eval: true

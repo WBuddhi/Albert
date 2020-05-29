@@ -4,7 +4,7 @@ from tensorflow.python.ops import math_ops
 from tensorflow.python.util.tf_export import keras_export
 from tensorflow.keras.optimizers.schedules import LearningRateSchedule
 from tensorflow.compat.v1 import logging
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 
 @keras_export("keras.optimizers.schedules.PolynomialDecayWarmup")
