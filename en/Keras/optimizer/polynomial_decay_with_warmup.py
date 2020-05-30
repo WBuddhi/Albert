@@ -95,37 +95,55 @@ class PolynomialDecayWarmup(LearningRateSchedule):
             warmup_percent_done = math_ops.divide(
                 global_step_warmup, warm_up_steps
             )
-            result = tf.cond(
-                global_step_warmup > warm_up_steps,
-                lambda: math_ops.multiply(
-                    initial_learning_rate,
-                    warmup_percent_done,
-                    name="warmup_lr",
-                ),
-                lambda: math_ops.add(
+            #result = tf.cond(
+            #    global_step_warmup > warm_up_steps,
+            #    lambda: math_ops.multiply(
+            #        initial_learning_rate,
+            #        warmup_percent_done,
+            #        name="warmup_lr",
+            #    ),
+            #    lambda: math_ops.add(
+            #        math_ops.multiply(
+            #            initial_learning_rate - end_learning_rate,
+            #            math_ops.pow(1 - p, power),
+            #        ),
+            #        end_learning_rate,
+            #        name="decayed_lr",
+            #    ),
+            #)
+            #result = (
+            #    math_ops.add(
+            #        math_ops.multiply(
+            #            initial_learning_rate - end_learning_rate,
+            #            math_ops.pow(1 - p, power),
+            #        ),
+            #        end_learning_rate,
+            #        name="decayed_lr",
+            #    ),
+            #)
+
+            #return result
+
+            if self.greater_than(global_step_warmup, warm_up_steps):
+                return math_ops.multiply(
+                    initial_learning_rate, warmup_percent_done, name=name
+                )
+            else:
+                return math_ops.add(
                     math_ops.multiply(
                         initial_learning_rate - end_learning_rate,
                         math_ops.pow(1 - p, power),
                     ),
                     end_learning_rate,
-                    name="decayed_lr",
-                ),
-            )
-            return result
+                    name=name,
+                )
 
-    #            if greater_than(global_step_warmup, warm_up_steps):
-    #                return math_ops.multiply(
-    #                    initial_learning_rate, warmup_percent_done, name=name
-    #                )
-    #            else:
-    #                return math_ops.add(
-    #                    math_ops.multiply(
-    #                        initial_learning_rate - end_learning_rate,
-    #                        math_ops.pow(1 - p, power),
-    #                    ),
-    #                    end_learning_rate,
-    #                    name=name,
-    #                )
+    @tf.function
+    def greater_than(self,a,b):
+        if tf.math.greater_than(a,b):
+            return True
+        else:
+            return False
 
     def get_config(self):
         """

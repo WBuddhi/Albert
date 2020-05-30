@@ -1,10 +1,10 @@
 # Local directories
 task_name: SemEval
 data_dir: /home/buddhi/Albert/en/Data/
-output_dir: gs://semeval-checkpoints/sts-keras/
-cached_dir: gs://semeval-checkpoints/sts-keras/cache
+output_dir: gs://buddhi_albert/sts-keras/
+cached_dir: gs://buddhi_albert/sts-keras/cache
 # Model hub url
-albert_hub_module_handle: gs://semeval-checkpoints/sts-keras/albert_model_hub_v2
+albert_hub_module_handle: gs://buddhi_albert/sts-keras/albert_model_hub_v2
 # Training params
 spm_model_file: /home/buddhi/Albert/en/Keras/albert_module_hub_v2/assets/30k-clean.model
 do_train: true
@@ -24,5 +24,5 @@ iterations_per_loop: 1000
 # Google cloud compute params
 use_tpu: True
 optimizer: adamw
-tpu_name: buddhi-ml
-gcp_project: tpu-v1
+tpu_name: tpu-v1
+gcp_project: buddhi-tpu

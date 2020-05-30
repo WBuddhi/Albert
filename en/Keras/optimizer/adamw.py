@@ -134,7 +134,7 @@ class AdamWeightDecayOptimizer(OptimizerV2):
         logging.debug(f"Optimizer Dense layer: {var.name}")
         if self._do_use_weight_decay(var.name):
             var_delta += w_d * var
-            logging.debug(f"Not applying decay on {var.name}")
+            logging.debug(f"Applying decay on {var.name}")
 
         var_delta_with_lr = lr_t * var_delta
         var_t = var - var_delta_with_lr

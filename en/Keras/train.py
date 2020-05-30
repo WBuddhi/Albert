@@ -1,7 +1,8 @@
 from typing import Tuple
 import os
 import tensorflow.compat.v1 as tf
-#import tensorflow as tf
+
+# import tensorflow as tf
 from tensorflow.compat.v1 import logging
 import tensorflow.compat.v1.keras.backend as K
 from model import StsbModel, AlbertLayer, StsbHead
@@ -28,8 +29,9 @@ def train_model(config: dict):
         config (dict): config
     """
 
-    #tf.enable_eager_execution()
+    tf.enable_eager_execution()
     logging.set_verbosity(tf.logging.DEBUG)
+    logging.propagate = False
     stsb_processor = StsbProcessor(
         config["spm_model_file"], config["do_lower_case"]
     )
@@ -84,19 +86,15 @@ def train_model(config: dict):
         logging.debug(albert_pooled_output)
         dropout = dropout_layer(albert_pooled_output)
         output = dense_layer(dropout)
-        #output = tf.squeeze(output, [-1])
+        output = tf.squeeze(output, [-1])
         model = keras.Model(inputs, output)
         mse_loss = keras.losses.MeanSquaredError()
-        mse_metrics = keras.metrics.MeanSquaredError(dtype = tf.float32)
+        mse_metrics = keras.metrics.MeanSquaredError(dtype=tf.float32)
 
         logging.debug(model.summary())
         optimizer = _create_optimizer(config)
     model.compile(
-        optimizer='Adam',
-        loss=mse_loss,
-        metrics=[mse_metrics],
-        #distribute=strategy,
-        #run_eager = True,
+        optimizer=optimizer, loss=mse_loss, metrics=[mse_metrics],
     )
 
     train_file, eval_file, test_file = _create_train_eval_input_files(
@@ -111,7 +109,9 @@ def train_model(config: dict):
     test_dataset = file_based_input_fn_builder(
         test_file, seq_len, is_training=False,
     )
-    log_dir = "logs/fit/" + datetime.now().strftime("%Y%m%d-%H%M%S")
+    log_dir = "gs://buddhi_albert/model_logs/" + datetime.now().strftime(
+        "%Y%m%d-%H%M%S"
+    )
     tensorboard_callback = keras.callbacks.TensorBoard(
         log_dir=log_dir, histogram_freq=0
     )
@@ -122,7 +122,7 @@ def train_model(config: dict):
             len(stsb_processor.get_train_examples(config["data_dir"])) / 32
         ),
         validation_data=eval_dataset,
-        #callbacks=[tensorboard_callback],
+        callbacks=[tensorboard_callback],
     )
 
 
@@ -186,9 +186,9 @@ def _get_tokenizer(config: dict) -> FullTokenizer:
     )
 
 
-#def pearson_correlation_metric_fn(
+# def pearson_correlation_metric_fn(
 #    y_true: tf.Tensor, y_pred: tf.Tensor
-#) -> tf.contrib.metrics:
+# ) -> tf.contrib.metrics:
 #    """
 #    Pearson correlation metric function.
 #

@@ -189,10 +189,10 @@ class FullTokenizer(object):
         self.sp_model = None
         if spm_model_file:
             self.sp_model = spm.SentencePieceProcessor()
-            self.sp_model.Load(
-                "/home/buddhi/albert_model_hub/assets/30k-clean.model"
-            )
-            # self.sp_model.Load(spm_model_file)
+            # self.sp_model.Load(
+            #    "/home/buddhi/albert_model_hub/assets/30k-clean.model"
+            # )
+            self.sp_model.Load(spm_model_file)
             # Note(mingdachen): For the purpose of consisent API, we are
             # generating a vocabulary for the sentence piece tokenizer.
             self.vocab = {
