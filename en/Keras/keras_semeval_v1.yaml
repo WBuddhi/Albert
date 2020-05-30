@@ -13,11 +13,11 @@ do_eval: true
 do_predict: true
 do_lower_case: true
 sequence_len: 512
-train_batch_size: 32
 num_train_epochs: 3
-eval_batch_size: 8
+train_batch_size: 32
+eval_batch_size: 32
 predict_batch_size: 8
-warmup_step: 1000
+warmup_steps: 100
 save_checkpoints_steps: 1000
 iterations_per_loop: 1000
 #init_checkpoint: gs://model.ckpt-0.data-00000-of-00001

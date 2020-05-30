@@ -43,7 +43,6 @@ class AdamWeightDecayOptimizer(OptimizerV2):
         self.epsilon = epsilon or backend_config.epsilon()
         self.exclude_from_weight_decay = exclude_from_weight_decay
         self._use_locking = False
-        logging.debug(f"exclude layers: {self.exclude_from_weight_decay}")
 
     def _create_slots(self, var_list):
         # Create slots for the first and second moments.
@@ -131,10 +130,8 @@ class AdamWeightDecayOptimizer(OptimizerV2):
         var_delta = m_t / (math_ops.sqrt(v_t) + epsilon_t)
 
         # Weight decays
-        logging.debug(f"Optimizer Dense layer: {var.name}")
         if self._do_use_weight_decay(var.name):
             var_delta += w_d * var
-            logging.debug(f"Applying decay on {var.name}")
 
         var_delta_with_lr = lr_t * var_delta
         var_t = var - var_delta_with_lr
@@ -191,11 +188,9 @@ class AdamWeightDecayOptimizer(OptimizerV2):
 
         var_t = math_ops.sub(var, self.eta_t * lr_t * var_delta)
 
-        logging.debug(f"Optimizer Sparce layer: {var.name}")
         # Weight decays
         if self._do_use_weight_decay(var.name):
             var_delta += w_d * var
-            logging.debug(f"Not applying decay on {var.name}")
 
         var_delta_with_lr = lr_t * var_delta
         var_t = var - var_delta_with_lr

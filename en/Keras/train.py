@@ -2,7 +2,7 @@ from typing import Tuple
 import os
 import tensorflow.compat.v1 as tf
 
-# import tensorflow as tf
+import tensorflow_probability as tfp
 from tensorflow.compat.v1 import logging
 import tensorflow.compat.v1.keras.backend as K
 from model import StsbModel, AlbertLayer, StsbHead
@@ -19,6 +19,7 @@ from tokenization import FullTokenizer
 import tensorflow_hub as hub
 from datetime import datetime
 from tensorflow.compat.v1 import keras
+import numpy as np
 
 
 def train_model(config: dict):
@@ -32,12 +33,6 @@ def train_model(config: dict):
     tf.enable_eager_execution()
     logging.set_verbosity(tf.logging.DEBUG)
     logging.propagate = False
-    stsb_processor = StsbProcessor(
-        config["spm_model_file"], config["do_lower_case"]
-    )
-    train_examples = stsb_processor.get_train_examples(config["data_dir"])
-    config["training_steps"] = len(train_examples)
-    # TPU init code
     if config.get("use_tpu", False):
         resolver = tf.distribute.cluster_resolver.TPUClusterResolver(
             tpu=config["tpu_name"]
@@ -47,11 +42,24 @@ def train_model(config: dict):
         strategy = tf.distribute.experimental.TPUStrategy(resolver)
     else:
         strategy = tf.distribute.MirroredStrategy()
-    metrics = [
-        keras.metrics.mean_squared_error
-        #        pearson_correlation_metric_fn,
-    ]
     seq_len = config.get("sequence_len", 512)
+    stsb_processor = StsbProcessor(
+        config["spm_model_file"], config["do_lower_case"]
+    )
+    train_examples = stsb_processor.get_train_examples(config["data_dir"])
+    train_file, eval_file, test_file, config = _create_train_eval_input_files(
+        config, stsb_processor
+    )
+    train_dataset = file_based_input_fn_builder(
+        train_file, seq_len, is_training=True, bsz = config.get("train_batch_size",32)
+    )
+    eval_dataset = file_based_input_fn_builder(
+        eval_file, seq_len, is_training=False, bsz = config.get("eval_batch_size",32)
+    )
+    test_dataset = file_based_input_fn_builder(
+            test_file, seq_len, is_training=False, bsz = config.get("predict_batch_size",32)
+    )
+    # TPU init code
     with strategy.scope():
         inputs = {}
         inputs["input_word_ids"] = keras.Input(
@@ -66,13 +74,6 @@ def train_model(config: dict):
         albert_layer = hub.KerasLayer(
             config.get("albert_hub_module_handle", ""), trainable=True,
         )
-        # albert_trainable_vars = [
-        #    var for var in albert_layer.variables if "/cls/" not in var.name
-        # ]
-        # albert_layer._trainable_weights.extend(albert_trainable_vars)
-        # for var in albert_trainable_vars:
-        #    albert_layer._non_trainable_weights.remove(var)
-        #    pass
         dropout_layer = keras.layers.Dropout(rate=0.1, name="dropout_layer")
         kernel_init = keras.initializers.TruncatedNormal(stddev=0.02)
         bias_init = keras.initializers.zeros()
@@ -83,48 +84,49 @@ def train_model(config: dict):
             name="dense_layer",
         )
         albert_pooled_output, _ = albert_layer(list(inputs.values()))
-        logging.debug(albert_pooled_output)
         dropout = dropout_layer(albert_pooled_output)
         output = dense_layer(dropout)
         output = tf.squeeze(output, [-1])
         model = keras.Model(inputs, output)
         mse_loss = keras.losses.MeanSquaredError()
-        mse_metrics = keras.metrics.MeanSquaredError(dtype=tf.float32)
 
-        logging.debug(model.summary())
+        metrics = [
+            keras.metrics.MeanSquaredError(dtype=tf.float32),
+            pearson_correlation_metric_fn,
+        ]
         optimizer = _create_optimizer(config)
+        logging.info(model.summary())
+
     model.compile(
-        optimizer=optimizer, loss=mse_loss, metrics=[mse_metrics],
+        optimizer=optimizer, loss=mse_loss, metrics=metrics,
     )
 
-    train_file, eval_file, test_file = _create_train_eval_input_files(
-        config, stsb_processor
-    )
-    train_dataset = file_based_input_fn_builder(
-        train_file, seq_len, is_training=True,
-    )
-    eval_dataset = file_based_input_fn_builder(
-        eval_file, seq_len, is_training=False,
-    )
-    test_dataset = file_based_input_fn_builder(
-        test_file, seq_len, is_training=False,
-    )
     log_dir = "gs://buddhi_albert/model_logs/" + datetime.now().strftime(
         "%Y%m%d-%H%M%S"
     )
     tensorboard_callback = keras.callbacks.TensorBoard(
         log_dir=log_dir, histogram_freq=0
     )
+
     model.fit(
         x=train_dataset,
         epochs=config.get("num_train_epochs", 5),
         steps_per_epoch=int(
-            len(stsb_processor.get_train_examples(config["data_dir"])) / 32
+            config.get('train_size',100)/config.get('train_batch_size',32)
         ),
         validation_data=eval_dataset,
+        validation_batch_size=config.get('eval_batch_size',32),
+        validation_steps=int(config.get('eval_size', 100)/config.get('eval_batch_size',32)),
         callbacks=[tensorboard_callback],
     )
-
+    predictions = model.predict(
+            x=test_dataset,
+            batch_size=config.get("predict_batch_size",32),
+            steps=int(config.get("predict_size", None)/config.get("predict_batch_size",32))
+            )
+    
+    y_pred_batched = [element[1] for element in test_dataset]
+    y_pred = np.stack(y_pred_batched)
 
 def _create_train_eval_input_files(
     config: dict, processor: DataProcessor
@@ -148,10 +150,13 @@ def _create_train_eval_input_files(
         cached_dir = config.get("output_dir", None)
     train_file = os.path.join(cached_dir, task_name + "_train.tf_record")
     train_examples = processor.get_train_examples(data_dir)
+    config["train_size"] = len(train_examples)
     eval_file = os.path.join(cached_dir, task_name + "_eval.tf_record")
     eval_examples = processor.get_dev_examples(data_dir)
+    config["eval_size"] = len(eval_examples)
     test_file = os.path.join(cached_dir, task_name + "_test.tf_record")
     test_examples = processor.get_test_examples(data_dir)
+    config["predict_size"] = len(test_examples)
     label_list = processor.get_labels()
     tokenizer = _get_tokenizer(config)
     for data_file, examples in zip(
@@ -166,7 +171,7 @@ def _create_train_eval_input_files(
             data_file,
             task_name,
         )
-    return train_file, eval_file, test_file
+    return train_file, eval_file, test_file, config
 
 
 def _get_tokenizer(config: dict) -> FullTokenizer:
@@ -186,20 +191,21 @@ def _get_tokenizer(config: dict) -> FullTokenizer:
     )
 
 
-# def pearson_correlation_metric_fn(
-#    y_true: tf.Tensor, y_pred: tf.Tensor
-# ) -> tf.contrib.metrics:
-#    """
-#    Pearson correlation metric function.
-#
-#    Args:
-#        y_true (tf.Tensor): y_true
-#        y_pred (tf.Tensor): y_pred
-#
-#    Returns:
-#        tf.contrib.metrics: pearson correlation
-#    """
-#    return tf.contrib.metrics.streaming_pearson_correlation(y_pred, y_true)[1]
+def pearson_correlation_metric_fn(
+    y_true: tf.Tensor, y_pred: tf.Tensor,
+) -> tf.Tensor:
+    """
+    Pearson correlation metric function.
+
+    Args:
+        y_true (tf.Tensor): y_true
+        y_pred (tf.Tensor): y_pred
+
+    Returns:
+        tf.contrib.metrics: pearson correlation
+    """
+    logging.debug(y_pred)
+    return tfp.stats.correlation(x=y_true, y=y_pred, sample_axis=0, event_axis=None)
 
 
 def _create_optimizer(config: dict) -> AdamWeightDecayOptimizer:
@@ -222,7 +228,7 @@ def _create_optimizer(config: dict) -> AdamWeightDecayOptimizer:
     beta_2 = 0.999
     epsilon = 1e-6
     exclude_from_weight_decay = ["LayerNorm", "layer_norm", "bias"]
-    training_len = config.get("training_steps", 5000)
+    training_len = config.get("train_size", 5000)
     num_train_steps = int((training_len / batch_size) * train_epochs)
     params_log = {
         "Initial learning rate": init_lr,

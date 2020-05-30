@@ -2,9 +2,12 @@ from tensorflow.python.framework import ops
 from tensorflow.python.ops import control_flow_ops
 from tensorflow.python.ops import math_ops
 from tensorflow.python.util.tf_export import keras_export
-from tensorflow.keras.optimizers.schedules import LearningRateSchedule
+from tensorflow.compat.v1.keras.optimizers.schedules import (
+    LearningRateSchedule,
+)
 from tensorflow.compat.v1 import logging
 import tensorflow.compat.v1 as tf
+import tensorflow.compat.v1.keras.backend as K
 
 
 @keras_export("keras.optimizers.schedules.PolynomialDecayWarmup")
@@ -16,7 +19,7 @@ class PolynomialDecayWarmup(LearningRateSchedule):
         initial_learning_rate: float,
         decay_steps: int,
         num_warmup_steps: int,
-        end_learning_rate: float = 0.0001,
+        end_learning_rate: float = 0.0,
         power: float = 1.0,
         start_warmup_step: int = 0,
         cycle: bool = False,
@@ -88,6 +91,10 @@ class PolynomialDecayWarmup(LearningRateSchedule):
                 )
 
             p = math_ops.divide(global_step_recomp, decay_steps_recomp)
+            decay_learning_rate = math_ops.multiply(
+                initial_learning_rate - end_learning_rate,
+                math_ops.pow(1 - p, power),
+            )
 
             global_step_warmup = math_ops.sub(
                 global_step_recomp, start_warmup_step
@@ -95,55 +102,15 @@ class PolynomialDecayWarmup(LearningRateSchedule):
             warmup_percent_done = math_ops.divide(
                 global_step_warmup, warm_up_steps
             )
-            #result = tf.cond(
-            #    global_step_warmup > warm_up_steps,
-            #    lambda: math_ops.multiply(
-            #        initial_learning_rate,
-            #        warmup_percent_done,
-            #        name="warmup_lr",
-            #    ),
-            #    lambda: math_ops.add(
-            #        math_ops.multiply(
-            #            initial_learning_rate - end_learning_rate,
-            #            math_ops.pow(1 - p, power),
-            #        ),
-            #        end_learning_rate,
-            #        name="decayed_lr",
-            #    ),
-            #)
-            #result = (
-            #    math_ops.add(
-            #        math_ops.multiply(
-            #            initial_learning_rate - end_learning_rate,
-            #            math_ops.pow(1 - p, power),
-            #        ),
-            #        end_learning_rate,
-            #        name="decayed_lr",
-            #    ),
-            #)
-
-            #return result
-
-            if self.greater_than(global_step_warmup, warm_up_steps):
-                return math_ops.multiply(
-                    initial_learning_rate, warmup_percent_done, name=name
-                )
-            else:
-                return math_ops.add(
-                    math_ops.multiply(
-                        initial_learning_rate - end_learning_rate,
-                        math_ops.pow(1 - p, power),
-                    ),
-                    end_learning_rate,
-                    name=name,
-                )
-
-    @tf.function
-    def greater_than(self,a,b):
-        if tf.math.greater_than(a,b):
-            return True
-        else:
-            return False
+            warmup_learning_rate = math_ops.multiply(
+                initial_learning_rate, warmup_percent_done,
+            )
+            learning_rate = control_flow_ops.cond(
+                math_ops.greater(global_step_warmup, warm_up_steps),
+                lambda: decay_learning_rate,
+                lambda: warmup_learning_rate,
+            )
+            return learning_rate
 
     def get_config(self):
         """
