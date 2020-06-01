@@ -108,7 +108,7 @@ def train_model(config: dict):
 
         metrics = [
             keras.metrics.MeanSquaredError(dtype=tf.float32),
-            # pearson_correlation_metric_fn,
+            pearson_correlation_metric_fn,
         ]
         model.compile(
             optimizer=optimizer, loss=mse_loss, metrics=metrics,
@@ -138,8 +138,8 @@ def train_model(config: dict):
             "prediction": pred,
         }
         output_data.append(row_data)
-    df = pd.DataFrame(output_data, index="id")
-    df.to_csv(config.get("pred_file", "results.csv"))
+    df = pd.DataFrame(output_data)
+    df.to_csv(config.get("pred_file", "results.csv"), index=False)
 
 def create_train_eval_input_files(
     config: dict, processor: DataProcessor
@@ -210,6 +210,7 @@ def pearson_correlation_metric_fn(
 ) -> tf.Tensor:
     """
     Pearson correlation metric function.
+    https://github.com/WenYanger/Keras_Metrics
 
     Args:
         y_true (tf.Tensor): y_true
@@ -218,8 +219,18 @@ def pearson_correlation_metric_fn(
     Returns:
         tf.contrib.metrics: pearson correlation
     """
-    
-    return pearsonr(y_true.numpy(), y_pred.numpy())
+
+    x = y_true
+    y = y_pred
+    mx = K.mean(x, axis=0)
+    my = K.mean(y, axis=0)
+    xm, ym = x - mx, y - my
+    r_num = K.sum(xm * ym)
+    x_square_sum = K.sum(xm * xm)
+    y_square_sum = K.sum(ym * ym)
+    r_den = K.sqrt(x_square_sum * y_square_sum) + 1e-12
+    r = r_num / r_den
+    return K.mean(r)
 
 def _create_optimizer(config: dict) -> AdamWeightDecayOptimizer:
     """
