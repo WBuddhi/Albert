@@ -1,4 +1,5 @@
 from typing import Tuple
+import csv
 import os
 import tensorflow.compat.v1 as tf
 
@@ -46,18 +47,26 @@ def train_model(config: dict):
     stsb_processor = StsbProcessor(
         config["spm_model_file"], config["do_lower_case"]
     )
-    train_examples = stsb_processor.get_train_examples(config["data_dir"])
     train_file, eval_file, test_file, config = _create_train_eval_input_files(
         config, stsb_processor
     )
     train_dataset = file_based_input_fn_builder(
-        train_file, seq_len, is_training=True, bsz = config.get("train_batch_size",32)
+        train_file,
+        seq_len,
+        is_training=True,
+        bsz=config.get("train_batch_size", 32),
     )
     eval_dataset = file_based_input_fn_builder(
-        eval_file, seq_len, is_training=False, bsz = config.get("eval_batch_size",32)
+        eval_file,
+        seq_len,
+        is_training=False,
+        bsz=config.get("eval_batch_size", 32),
     )
     test_dataset = file_based_input_fn_builder(
-            test_file, seq_len, is_training=False, bsz = config.get("predict_batch_size",32)
+        test_file,
+        seq_len,
+        is_training=False,
+        bsz=config.get("predict_batch_size", 32),
     )
     # TPU init code
     with strategy.scope():
@@ -90,16 +99,16 @@ def train_model(config: dict):
         model = keras.Model(inputs, output)
         mse_loss = keras.losses.MeanSquaredError()
 
-        metrics = [
-            keras.metrics.MeanSquaredError(dtype=tf.float32),
-            pearson_correlation_metric_fn,
-        ]
         optimizer = _create_optimizer(config)
         logging.info(model.summary())
 
-    model.compile(
-        optimizer=optimizer, loss=mse_loss, metrics=metrics,
-    )
+        metrics = [
+            keras.metrics.MeanSquaredError(dtype=tf.float32),
+            #pearson_correlation_metric_fn,
+        ]
+        model.compile(
+            optimizer=optimizer, loss=mse_loss, metrics=metrics,
+        )
 
     log_dir = "gs://buddhi_albert/model_logs/" + datetime.now().strftime(
         "%Y%m%d-%H%M%S"
@@ -107,26 +116,24 @@ def train_model(config: dict):
     tensorboard_callback = keras.callbacks.TensorBoard(
         log_dir=log_dir, histogram_freq=0
     )
-
     model.fit(
         x=train_dataset,
         epochs=config.get("num_train_epochs", 5),
         steps_per_epoch=int(
-            config.get('train_size',100)/config.get('train_batch_size',32)
+            config.get("train_size", None)
+            / config.get("train_batch_size", None)
         ),
         validation_data=eval_dataset,
-        validation_batch_size=config.get('eval_batch_size',32),
-        validation_steps=int(config.get('eval_size', 100)/config.get('eval_batch_size',32)),
         callbacks=[tensorboard_callback],
     )
-    predictions = model.predict(
-            x=test_dataset,
-            batch_size=config.get("predict_batch_size",32),
-            steps=int(config.get("predict_size", None)/config.get("predict_batch_size",32))
-            )
-    
-    y_pred_batched = [element[1] for element in test_dataset]
-    y_pred = np.stack(y_pred_batched)
+    predictions = model.predict(x=test_dataset,)
+    logging.debug(f"y_pred: {predictions}")
+    with tf.gfile.Open("../Data/STS-B/original/sts-test.tsv","r") as f:
+        reader = csv.reader(f, delimiter="\t", quotechar=None)
+        lines = [line for line in reader]
+    y_true = np.array([float(x[4]) for x in lines], dtype=np.float32)
+    return pearson_correlation_metric_fn(y_true, predictions)
+
 
 def _create_train_eval_input_files(
     config: dict, processor: DataProcessor
@@ -204,8 +211,12 @@ def pearson_correlation_metric_fn(
     Returns:
         tf.contrib.metrics: pearson correlation
     """
-    logging.debug(y_pred)
-    return tfp.stats.correlation(x=y_true, y=y_pred, sample_axis=0, event_axis=None)
+    logging.debug("pearson correlation")
+    logging.debug(f"y_pred: {y_pred}")
+    logging.debug(f"y_true: {y_true}")
+    return tfp.stats.correlation(
+        x=y_true, y=y_pred, sample_axis=0, event_axis=None
+    )
 
 
 def _create_optimizer(config: dict) -> AdamWeightDecayOptimizer:

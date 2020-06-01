@@ -168,7 +168,7 @@ class AdamWeightDecayOptimizer(OptimizerV2):
         ) or self._fallback_apply_state(var_device, var_dtype)
         m = self.get_slot(var, "m")
         v = self.get_slot(var, "v")
-        w_d = coefficients["w_d"]
+        w_d = coefficients["weight_decay_rate"]
         beta_1_t = coefficients["beta_1_t"]
         beta_2_t = coefficients["beta_2_t"]
         epsilon_t = coefficients["epsilon"]
@@ -185,8 +185,6 @@ class AdamWeightDecayOptimizer(OptimizerV2):
             v_t = self._resource_scatter_add(v, indices, v_scaled_g_values)
 
         var_delta = m_t / (math_ops.sqrt(v_t) + epsilon_t)
-
-        var_t = math_ops.sub(var, self.eta_t * lr_t * var_delta)
 
         # Weight decays
         if self._do_use_weight_decay(var.name):
