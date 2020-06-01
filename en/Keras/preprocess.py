@@ -128,6 +128,11 @@ def file_based_input_fn_builder(
             "input_mask": example["input_mask"],
             "segment_ids": example["segment_ids"],
         }
+        inputs = [
+            example["input_ids"],
+            example["input_mask"],
+            example["segment_ids"],
+        ]
 
         return (inputs, example["label_ids"])
 

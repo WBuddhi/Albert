@@ -72,12 +72,21 @@ def train_model(config: dict):
     )
     # TPU init code
     with strategy.scope():
-        model = StsbModel()
+        inputs = [
+        keras.Input(
+            shape=(seq_len,), dtype=tf.int32, name="input_word_ids"
+        ),
+        keras.Input(
+            shape=(seq_len,), dtype=tf.int32, name="input_mask"
+        ),
+        keras.Input(
+            shape=(seq_len,), dtype=tf.int32, name="segment_ids"
+        ),
+        ]
+        model = StsbModel(config.get('albert_hub_module_handle',None))
+
         mse_loss = keras.losses.MeanSquaredError()
-
         optimizer = _create_optimizer(config)
-        logging.info(model.summary())
-
         metrics = [
             keras.metrics.MeanSquaredError(dtype=tf.float32),
             pearson_correlation_metric_fn,
@@ -91,16 +100,16 @@ def train_model(config: dict):
     tensorboard_callback = keras.callbacks.TensorBoard(
         log_dir=log_dir, histogram_freq=0
     )
-    #model.fit(
-    #    x=train_dataset,
-    #    epochs=config.get("num_train_epochs", 5),
-    #    steps_per_epoch=int(
-    #        config.get("train_size", None)
-    #        / config.get("train_batch_size", None)
-    #    ),
-    #    validation_data=eval_dataset,
-    #    callbacks=[tensorboard_callback],
-    #)
+    model.fit(
+        x=train_dataset,
+        epochs=config.get("num_train_epochs", 5),
+        steps_per_epoch=int(
+            config.get("train_size", None)
+            / config.get("train_batch_size", None)
+        ),
+        validation_data=eval_dataset,
+        callbacks=[tensorboard_callback],
+    )
     #predictions = model.predict(x=test_dataset)
     #output_data = []
     #for example, pred in zip(test_examples, predictions):
