@@ -4,6 +4,7 @@ data_dir: /home/buddhi/Albert/en/Data/
 output_dir: gs://buddhi_albert/sts-keras/
 cached_dir: gs://buddhi_albert/sts-keras/cache
 pred_file: gs://buddhi_albert/sts-keras/results.csv
+tensorboard_logs: gs://buddhi_albert/model_logs/ 
 # Model hub url
 albert_hub_module_handle: gs://buddhi_albert/sts-keras/albert_model_hub_v2
 # Training params

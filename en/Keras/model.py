@@ -1,86 +1,29 @@
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 import tensorflow_hub as hub
-from tensorflow.keras import backend as K
-
-
-class AlbertLayer(tf.keras.layers.Layer):
-    def __init__(self, albert_hub: str, train_layers: bool = True, **kwargs):
-        """
-        Albert Model converted to keras layer.
-
-        Args:
-            config: configuration file
-            train_layers: allow albert variables to be trained
-        """
-
-        self.trainable = train_layers
-        self.albert_hub = albert_hub
-        super(AlbertLayer, self).__init__(**kwargs)
-        tf.compat.v1.logging.debug(f"Model built: {self.built}")
-        tf.compat.v1.logging.debug(
-            f"Name scope: {tf.get_default_graph().get_name_scope()}"
-        )
-        self.albert = hub.Module(self.albert_hub, trainable=self.trainable,)
-        albert_vars = self.albert.variables
-        if self.trainable:
-            self._trainable_weights.extend(
-                [var for var in albert_vars if "/cls/" not in var.name]
-            )
-
-    def call(self, inputs: list) -> tf.Tensor:
-        """
-        Layer call function.
-
-        Args:
-            inputs: inputs to layer [input_id, input_mask, input_segment]
-        return:
-            result: output tensor.
-        """
-
-        tf.logging.debug("model input")
-        tf.logging.debug(inputs)
-        inputs = [K.cast(x, dtype="int32") for x in inputs]
-        input_ids, input_mask, segment_ids = inputs
-        albert_inputs = dict(
-            input_ids=input_ids, input_mask=input_mask, segment_ids=segment_ids
-        )
-        result = self.albert(
-            inputs=albert_inputs, signature="tokens", as_dict=True
-        )["pooled_output"]
-        tf.logging.debug(result)
-
-        return result
-
-    def get_config(self):
-        config = super(AlbertLayer, self).get_config()
-        config.update(
-            {"train_layers": self.trainable, "albert_hub": self.albert_hub,}
-        )
-        return config
+from tensorflow.compat.v1.keras import backend as K
 
 
 class StsbHead(tf.keras.layers.Layer):
-    def __init__(self, layer_size: int, name: str = "stsb_head"):
+    def __init__(self, name: str = "stsb_head"):
         """
         STS-B Task custom head.
 
         Args:
-            layer_size: unit size of layers
             name: layer name.
         """
 
         super(StsbHead, self).__init__(name=name)
+        self.name = name
 
-        self.layer_size = layer_size
-        self.dropout = tf.keras.layers.Dropout(rate=0.1, name="dropout")
+        self.dropout = tf.keras.layers.Dropout(rate=0.1, name="dropout_layer")
 
         kernel_initializer = tf.keras.initializers.TruncatedNormal(stddev=0.02)
         bias_initializer = tf.keras.initializers.zeros()
         self.dense = tf.keras.layers.Dense(
-            units=layer_size,
+            units=1,
             kernel_initializer=kernel_initializer,
             bias_initializer=bias_initializer,
-            name="output_weights",
+            name="sts_head_output",
         )
 
     def call(self, inputs: tf.Tensor, training: bool = False):
@@ -93,30 +36,27 @@ class StsbHead(tf.keras.layers.Layer):
         """
 
         output_dropout = self.dropout(inputs, training=training)
-        predictions = self.dense(output_dropout)
-        return predictions
-
-    def get_config(self):
-        config = super(StsbHead, self).get_config()
-        config.update({"layer_size": self.layer_size})
-        config.pop("trainable", None)
-        return config
+        output_dense = self.dense(output_dropout)
+        output = tf.squeeze(output_dense, [-1])
+        return output
 
 
 class StsbModel(tf.keras.Model):
-    def __init__(self, config: dict, pretrain_train_mode: bool = True):
+    def __init__(self, albert_hub_model: str, name:str="stsb_model"):
         """
         ALBERT STS-B model.
 
         Args:
-            pretrain_train_mode: train layers in pretrain model
+            albert_hub_model (str): albert model tf hub path.
+            name (str): name
         """
         super(StsbModel, self).__init__()
-        self.pretrained_layer = AlbertLayer(
-            config, train_layers=pretrain_train_mode
+        self.name = name
+        self.albert_hub_model = albert_hub_model
+        self.pretrained_layer = hub.KerasLayer(
+            self.albert_hub_model, trainable=True,
         )
-        hidden_size = 768
-        self.custom_head = StsbHead(hidden_size)
+        self.custom_head = StsbHead()
 
     def call(self, inputs):
         """
@@ -128,5 +68,9 @@ class StsbModel(tf.keras.Model):
             Model predictions
         """
         predictions = self.custom_head(self.pretrained_layer(inputs))
-        tf.logging.debug(predictions)
         return predictions
+
+    def get_config(self):
+        """Update config."""
+        config = super(StsbModel, self).get_config()
+        config.update({"albert_hub_model": self.albert_hub_model})

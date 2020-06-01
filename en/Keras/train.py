@@ -8,9 +8,7 @@ import tensorflow.compat.v1 as tf
 from tensorflow.compat.v1 import logging
 import tensorflow.compat.v1.keras.backend as K
 from tensorflow.compat.v1 import keras
-import tensorflow_hub as hub
-import tensorflow_probability as tfp
-from model import StsbModel, AlbertLayer, StsbHead
+from model import StsbModel
 from dataprocessor import DataProcessor, StsbProcessor
 from preprocess import (
     file_based_input_fn_builder,
@@ -74,33 +72,7 @@ def train_model(config: dict):
     )
     # TPU init code
     with strategy.scope():
-        inputs = {}
-        inputs["input_word_ids"] = keras.Input(
-            shape=(seq_len,), dtype=tf.int32, name="input_word_ids"
-        )
-        inputs["input_mask"] = keras.Input(
-            shape=(seq_len,), dtype=tf.int32, name="input_mask"
-        )
-        inputs["segment_ids"] = keras.Input(
-            shape=(seq_len,), dtype=tf.int32, name="segment_ids"
-        )
-        albert_layer = hub.KerasLayer(
-            config.get("albert_hub_module_handle", ""), trainable=True,
-        )
-        dropout_layer = keras.layers.Dropout(rate=0.1, name="dropout_layer")
-        kernel_init = keras.initializers.TruncatedNormal(stddev=0.02)
-        bias_init = keras.initializers.zeros()
-        dense_layer = keras.layers.Dense(
-            units=1,
-            kernel_initializer=kernel_init,
-            bias_initializer=bias_init,
-            name="dense_layer",
-        )
-        albert_pooled_output, _ = albert_layer(list(inputs.values()))
-        dropout = dropout_layer(albert_pooled_output)
-        output = dense_layer(dropout)
-        output = tf.squeeze(output, [-1])
-        model = keras.Model(inputs, output)
+        model = StsbModel()
         mse_loss = keras.losses.MeanSquaredError()
 
         optimizer = _create_optimizer(config)
@@ -114,32 +86,32 @@ def train_model(config: dict):
             optimizer=optimizer, loss=mse_loss, metrics=metrics,
         )
 
-    log_dir = "gs://buddhi_albert/model_logs/" + datetime.now().strftime(
-        "%Y%m%d-%H%M%S"
-    )
+    log_dir = config.get('tensorboard_logs',None) + datetime.now().strftime(
+        "%Y%m%d-%H%M%S")
     tensorboard_callback = keras.callbacks.TensorBoard(
         log_dir=log_dir, histogram_freq=0
     )
-    model.fit(
-        x=train_dataset,
-        epochs=config.get("num_train_epochs", 5),
-        steps_per_epoch=int(
-            config.get("train_size", None)
-            / config.get("train_batch_size", None)
-        ),
-        validation_data=eval_dataset,
-        callbacks=[tensorboard_callback],
-    )
-    predictions = model.predict(x=test_dataset)
-    output_data = []
-    for example, pred in zip(test_examples, predictions):
-        row_data = {
-            "id": example.guid,
-            "prediction": pred,
-        }
-        output_data.append(row_data)
-    df = pd.DataFrame(output_data)
-    df.to_csv(config.get("pred_file", "results.csv"), index=False)
+    #model.fit(
+    #    x=train_dataset,
+    #    epochs=config.get("num_train_epochs", 5),
+    #    steps_per_epoch=int(
+    #        config.get("train_size", None)
+    #        / config.get("train_batch_size", None)
+    #    ),
+    #    validation_data=eval_dataset,
+    #    callbacks=[tensorboard_callback],
+    #)
+    #predictions = model.predict(x=test_dataset)
+    #output_data = []
+    #for example, pred in zip(test_examples, predictions):
+    #    row_data = {
+    #        "id": example.guid,
+    #        "prediction": pred,
+    #    }
+    #    output_data.append(row_data)
+    #df = pd.DataFrame(output_data)
+    #df.to_csv(config.get("pred_file", "results.csv"), index=False)
+
 
 def create_train_eval_input_files(
     config: dict, processor: DataProcessor
@@ -231,6 +203,7 @@ def pearson_correlation_metric_fn(
     r_den = K.sqrt(x_square_sum * y_square_sum) + 1e-12
     r = r_num / r_den
     return K.mean(r)
+
 
 def _create_optimizer(config: dict) -> AdamWeightDecayOptimizer:
     """
