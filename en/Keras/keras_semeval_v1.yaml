@@ -3,6 +3,7 @@ task_name: SemEval
 data_dir: /home/buddhi/Albert/en/Data/
 output_dir: gs://buddhi_albert/sts-keras/
 cached_dir: gs://buddhi_albert/sts-keras/cache
+pred_file: gs://buddhi_albert/sts-keras/results.csv
 # Model hub url
 albert_hub_module_handle: gs://buddhi_albert/sts-keras/albert_model_hub_v2
 # Training params
@@ -10,13 +11,13 @@ spm_model_file: /home/buddhi/Albert/en/Keras/albert_module_hub_v2/assets/30k-cle
 do_train: true
 learning_rate: 5e-5
 do_eval: true
-do_predict: true
+do_test: true
 do_lower_case: true
 sequence_len: 512
 num_train_epochs: 3
 train_batch_size: 32
 eval_batch_size: 32
-predict_batch_size: 8
+test_batch_size: 8
 warmup_steps: 100
 save_checkpoints_steps: 1000
 iterations_per_loop: 1000

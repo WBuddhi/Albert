@@ -30,9 +30,9 @@ class DataProcessor(object):
         """
         raise NotImplementedError()
 
-    def get_dev_examples(self, data_dir: str):
+    def get_test(self, data_dir: str):
         """
-        Gets a collection of `InputExample`s for the dev set.
+        Gets a collection of `InputExample`s for the test set.
 
         Args:
             data_dir (str): data_dir
@@ -108,7 +108,7 @@ class StsbProcessor(DataProcessor):
             "train",
         )
 
-    def get_dev_examples(
+    def get_eval_examples(
         self, data_dir: str, folder_name: str = "STS-B"
     ) -> List[InputExample]:
         """
@@ -123,7 +123,7 @@ class StsbProcessor(DataProcessor):
         """
         return self._create_examples(
             self._read_tsv(os.path.join(data_dir, folder_name, "dev.tsv")),
-            "dev",
+            "eval",
         )
 
     def get_test_examples(

@@ -1,11 +1,15 @@
 from typing import Tuple
-import csv
 import os
+import argparse
+from datetime import datetime
+import numpy as np
+import pandas as pd
 import tensorflow.compat.v1 as tf
-
-import tensorflow_probability as tfp
 from tensorflow.compat.v1 import logging
 import tensorflow.compat.v1.keras.backend as K
+from tensorflow.compat.v1 import keras
+import tensorflow_hub as hub
+import tensorflow_probability as tfp
 from model import StsbModel, AlbertLayer, StsbHead
 from dataprocessor import DataProcessor, StsbProcessor
 from preprocess import (
@@ -15,12 +19,8 @@ from preprocess import (
 from optimizer.polynomial_decay_with_warmup import PolynomialDecayWarmup
 from optimizer.adamw import AdamWeightDecayOptimizer
 from utils import read_yaml_config
-import argparse
 from tokenization import FullTokenizer
-import tensorflow_hub as hub
-from datetime import datetime
-from tensorflow.compat.v1 import keras
-import numpy as np
+from scipy.stats import pearsonr
 
 
 def train_model(config: dict):
@@ -47,9 +47,13 @@ def train_model(config: dict):
     stsb_processor = StsbProcessor(
         config["spm_model_file"], config["do_lower_case"]
     )
-    train_file, eval_file, test_file, config = _create_train_eval_input_files(
-        config, stsb_processor
-    )
+    (
+        train_file,
+        eval_file,
+        test_file,
+        test_examples,
+        config,
+    ) = create_train_eval_input_files(config, stsb_processor)
     train_dataset = file_based_input_fn_builder(
         train_file,
         seq_len,
@@ -66,7 +70,7 @@ def train_model(config: dict):
         test_file,
         seq_len,
         is_training=False,
-        bsz=config.get("predict_batch_size", 32),
+        bsz=config.get("test_batch_size", 32),
     )
     # TPU init code
     with strategy.scope():
@@ -104,7 +108,7 @@ def train_model(config: dict):
 
         metrics = [
             keras.metrics.MeanSquaredError(dtype=tf.float32),
-            #pearson_correlation_metric_fn,
+            # pearson_correlation_metric_fn,
         ]
         model.compile(
             optimizer=optimizer, loss=mse_loss, metrics=metrics,
@@ -126,16 +130,18 @@ def train_model(config: dict):
         validation_data=eval_dataset,
         callbacks=[tensorboard_callback],
     )
-    predictions = model.predict(x=test_dataset,)
-    logging.debug(f"y_pred: {predictions}")
-    with tf.gfile.Open("../Data/STS-B/original/sts-test.tsv","r") as f:
-        reader = csv.reader(f, delimiter="\t", quotechar=None)
-        lines = [line for line in reader]
-    y_true = np.array([float(x[4]) for x in lines], dtype=np.float32)
-    return pearson_correlation_metric_fn(y_true, predictions)
+    predictions = model.predict(x=test_dataset)
+    output_data = []
+    for example, pred in zip(test_examples, predictions):
+        row_data = {
+            "id": example.guid,
+            "prediction": pred,
+        }
+        output_data.append(row_data)
+    df = pd.DataFrame(output_data, index="id")
+    df.to_csv(config.get("pred_file", "results.csv"))
 
-
-def _create_train_eval_input_files(
+def create_train_eval_input_files(
     config: dict, processor: DataProcessor
 ) -> Tuple[str]:
     """
@@ -153,17 +159,18 @@ def _create_train_eval_input_files(
     cached_dir = config.get("cached_dir", None)
     task_name = config.get("task_name", "Experiment")
     data_dir = config.get("data_dir", "")
+    model_step_names = ["train", "eval", "test"]
     if not cached_dir:
         cached_dir = config.get("output_dir", None)
     train_file = os.path.join(cached_dir, task_name + "_train.tf_record")
     train_examples = processor.get_train_examples(data_dir)
     config["train_size"] = len(train_examples)
     eval_file = os.path.join(cached_dir, task_name + "_eval.tf_record")
-    eval_examples = processor.get_dev_examples(data_dir)
+    eval_examples = processor.get_eval_examples(data_dir)
     config["eval_size"] = len(eval_examples)
     test_file = os.path.join(cached_dir, task_name + "_test.tf_record")
     test_examples = processor.get_test_examples(data_dir)
-    config["predict_size"] = len(test_examples)
+    config["test_size"] = len(test_examples)
     label_list = processor.get_labels()
     tokenizer = _get_tokenizer(config)
     for data_file, examples in zip(
@@ -178,7 +185,7 @@ def _create_train_eval_input_files(
             data_file,
             task_name,
         )
-    return train_file, eval_file, test_file, config
+    return train_file, eval_file, test_file, test_examples, config
 
 
 def _get_tokenizer(config: dict) -> FullTokenizer:
@@ -211,13 +218,8 @@ def pearson_correlation_metric_fn(
     Returns:
         tf.contrib.metrics: pearson correlation
     """
-    logging.debug("pearson correlation")
-    logging.debug(f"y_pred: {y_pred}")
-    logging.debug(f"y_true: {y_true}")
-    return tfp.stats.correlation(
-        x=y_true, y=y_pred, sample_axis=0, event_axis=None
-    )
-
+    
+    return pearsonr(y_true.numpy(), y_pred.numpy())
 
 def _create_optimizer(config: dict) -> AdamWeightDecayOptimizer:
     """
