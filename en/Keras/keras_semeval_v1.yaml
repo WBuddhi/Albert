@@ -26,5 +26,5 @@ iterations_per_loop: 1000
 # Google cloud compute params
 use_tpu: True
 optimizer: adamw
-tpu_name: tpu-v1
+tpu_name: tpu-v2
 gcp_project: buddhi-tpu

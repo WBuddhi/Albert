@@ -1,6 +1,8 @@
 import tensorflow.compat.v1 as tf
 import tensorflow_hub as hub
+from tensorflow.compat.v1 import keras
 from tensorflow.compat.v1.keras import backend as K
+from typing import Dict
 
 
 class StsbHead(tf.keras.layers.Layer):
@@ -58,7 +60,7 @@ class StsbModel(tf.keras.Model):
         )
         self.custom_head = StsbHead()
 
-    def call(self, inputs):
+    def call(self, inputs, training=None)->tf.Tensor:
         """
         Keras Model call fn.
 
@@ -67,11 +69,36 @@ class StsbModel(tf.keras.Model):
         return:
             Model predictions
         """
-        pooled_output, _ = self.pretrained_layer(inputs)
-        predictions = self.custom_head(pooled_output)
+        inputs = [
+            keras.Input(
+                dtype=tf.int32,
+                name="input_word_ids",
+                tensor=inputs["input_word_ids"],
+            ),
+            keras.Input(
+                dtype=tf.int32, name="input_mask", tensor=inputs["input_mask"],
+            ),
+            keras.Input(
+                dtype=tf.int32,
+                name="segment_ids",
+                tensor=inputs["segment_ids"],
+            ),
+        ]
+        albert_pooled_output, _ = self.pretrained_layer(inputs)
+        predictions = self.custom_head(albert_pooled_output)
         return predictions
 
-    def get_config(self):
+    def get_config(self)->Dict[str, str]:
         """Update config."""
         config = super(StsbModel, self).get_config()
         config.update({"albert_hub_model": self.albert_hub_model})
+        return config
+
+    def get_sample_input(self, sequence_len:int)->Dict[str, keras.Input]:
+        sample_tensor = keras.Input(shape=(sequence_len,),dtype=tf.int32)
+        inputs = {
+            "input_word_ids": sample_tensor,
+            "input_mask": sample_tensor,
+            "segment_ids": sample_tensor,
+        }
+        return inputs

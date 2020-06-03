@@ -92,11 +92,12 @@ def file_based_input_fn_builder(
     labeltype = tf.float32
 
     name_to_features = {
-        "input_ids": tf.FixedLenFeature([seq_length * multiple], tf.int64),
+        "input_word_ids": tf.FixedLenFeature(
+            [seq_length * multiple], tf.int64
+        ),
         "input_mask": tf.FixedLenFeature([seq_length * multiple], tf.int64),
         "segment_ids": tf.FixedLenFeature([seq_length * multiple], tf.int64),
         "label_ids": tf.FixedLenFeature([], labeltype),
-        "is_real_example": tf.FixedLenFeature([], tf.int64),
     }
 
     def _decode_record(
@@ -120,21 +121,16 @@ def file_based_input_fn_builder(
         for name in list(example.keys()):
             t = example[name]
             if t.dtype == tf.int64:
-                t = tf.cast(t, tf.int32)
+                t = tf.cast(t, tf.int32, name=name)
             example[name] = t
 
         inputs = {
-            "input_word_ids": example["input_ids"],
+            "input_word_ids": example["input_word_ids"],
             "input_mask": example["input_mask"],
             "segment_ids": example["segment_ids"],
         }
-        inputs = [
-            example["input_ids"],
-            example["input_mask"],
-            example["segment_ids"],
-        ]
 
-        return (inputs, example["label_ids"])
+        return (example, example["label_ids"])
 
     def input_fn():
         """The actual input function."""
@@ -186,7 +182,7 @@ def file_based_convert_examples_to_features(
             return f
 
         features = collections.OrderedDict()
-        features["input_ids"] = create_int_feature(feature.input_ids)
+        features["input_word_ids"] = create_int_feature(feature.input_ids)
         features["input_mask"] = create_int_feature(feature.input_mask)
         features["segment_ids"] = create_int_feature(feature.segment_ids)
         features["label_ids"] = create_float_feature([feature.label_id])

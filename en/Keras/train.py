@@ -72,19 +72,8 @@ def train_model(config: dict):
     )
     # TPU init code
     with strategy.scope():
-        inputs = [
-        keras.Input(
-            shape=(seq_len,), dtype=tf.int32, name="input_word_ids"
-        ),
-        keras.Input(
-            shape=(seq_len,), dtype=tf.int32, name="input_mask"
-        ),
-        keras.Input(
-            shape=(seq_len,), dtype=tf.int32, name="segment_ids"
-        ),
-        ]
-        model = StsbModel(config.get('albert_hub_module_handle',None))
-
+        model = StsbModel(config.get("albert_hub_module_handle", None))
+        print_summary(model, seq_len)
         mse_loss = keras.losses.MeanSquaredError()
         optimizer = _create_optimizer(config)
         metrics = [
@@ -95,8 +84,9 @@ def train_model(config: dict):
             optimizer=optimizer, loss=mse_loss, metrics=metrics,
         )
 
-    log_dir = config.get('tensorboard_logs',None) + datetime.now().strftime(
-        "%Y%m%d-%H%M%S")
+    log_dir = config.get("tensorboard_logs", None) + datetime.now().strftime(
+        "%Y%m%d-%H%M%S"
+    )
     tensorboard_callback = keras.callbacks.TensorBoard(
         log_dir=log_dir, histogram_freq=0
     )
@@ -110,17 +100,27 @@ def train_model(config: dict):
         validation_data=eval_dataset,
         callbacks=[tensorboard_callback],
     )
-    #predictions = model.predict(x=test_dataset)
-    #output_data = []
-    #for example, pred in zip(test_examples, predictions):
-    #    row_data = {
-    #        "id": example.guid,
-    #        "prediction": pred,
-    #    }
-    #    output_data.append(row_data)
-    #df = pd.DataFrame(output_data)
-    #df.to_csv(config.get("pred_file", "results.csv"), index=False)
+    if config.get('do_predict',False):
+        run_test(model, test_examples)
 
+def run_test(model:keras.Model, test_dataset:tf.data.Dataset, test_examples:list):
+    predictions = model.predict(x=test_dataset)
+    output_data = []
+    for example, pred in zip(test_examples, predictions):
+       row_data = {
+           "id": example.guid,
+           "prediction": pred,
+       }
+       output_data.append(row_data)
+    df = pd.DataFrame(output_data)
+    result_file = config.get("pred_file", "results.csv")
+    df.to_csv(result_file, index=False)
+    tf.logging.info(f"Results saved at: {result_file}")
+
+def print_summary(model:keras.Model, sequence_len):
+    sample_input = model.get_sample_input(sequence_len)
+    model(sample_input)
+    model.summary()
 
 def create_train_eval_input_files(
     config: dict, processor: DataProcessor
