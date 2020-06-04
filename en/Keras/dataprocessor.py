@@ -23,7 +23,7 @@ class DataProcessor(object):
 
     def get_train_examples(self, data_dir: str):
         """
-        Gets a collection of `InputExample`s for the train set.
+        Gets a collection of Examples for the train set.
 
         Args:
             data_dir (str): data_dir
@@ -32,7 +32,7 @@ class DataProcessor(object):
 
     def get_test(self, data_dir: str):
         """
-        Gets a collection of `InputExample`s for the test set.
+        Gets a collection of Examples for the test set.
 
         Args:
             data_dir (str): data_dir
@@ -41,7 +41,7 @@ class DataProcessor(object):
 
     def get_test_examples(self, data_dir: str):
         """
-        Gets a collection of `InputExample`s for prediction.
+        Gets a collection of Examples for prediction.
 
         Args:
             data_dir (str): data_dir

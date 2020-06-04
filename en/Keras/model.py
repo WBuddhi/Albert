@@ -60,7 +60,7 @@ class StsbModel(tf.keras.Model):
         )
         self.custom_head = StsbHead()
 
-    def call(self, inputs, training=None)->tf.Tensor:
+    def call(self, inputs, training=None) -> tf.Tensor:
         """
         Keras Model call fn.
 
@@ -88,14 +88,14 @@ class StsbModel(tf.keras.Model):
         predictions = self.custom_head(albert_pooled_output)
         return predictions
 
-    def get_config(self)->Dict[str, str]:
+    def get_config(self) -> Dict[str, str]:
         """Update config."""
         config = super(StsbModel, self).get_config()
         config.update({"albert_hub_model": self.albert_hub_model})
         return config
 
-    def get_sample_input(self, sequence_len:int)->Dict[str, keras.Input]:
-        sample_tensor = keras.Input(shape=(sequence_len,),dtype=tf.int32)
+    def get_sample_input(self, sequence_len: int) -> Dict[str, keras.Input]:
+        sample_tensor = keras.Input(shape=(sequence_len,), dtype=tf.int32)
         inputs = {
             "input_word_ids": sample_tensor,
             "input_mask": sample_tensor,
