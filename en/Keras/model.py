@@ -54,20 +54,24 @@ class StsbModel(tf.keras.Model):
             albert_hub_model (str): albert model tf hub path.
         """
         super(StsbModel, self).__init__()
+        kernel_initializer = tf.keras.initializers.TruncatedNormal(stddev=0.02)
+        bias_initializer = tf.keras.initializers.zeros()
+
         self.albert_hub_model = albert_hub_model
         self.pretrained_layer = hub.KerasLayer(
             self.albert_hub_model, trainable=True, name="albert_layer",
         )
-        self.custom_head = StsbHead()
+        self.dropout = tf.keras.layers.Dropout(rate=0.1, name="dropout_layer")
+        self.dense = tf.keras.layers.Dense(
+            units=1,
+            kernel_initializer=kernel_initializer,
+            bias_initializer=bias_initializer,
+            name="sts_head_output",
+        )
 
-    def call(self, inputs, training=None) -> tf.Tensor:
+    def call(self, inputs:tf.Tensor, training:bool=None) -> tf.Tensor:
         """
         Keras Model call fn.
-
-        Args:
-            inputs: Model inputs.
-        return:
-            Model predictions
         """
         inputs = [
             keras.Input(
@@ -84,9 +88,12 @@ class StsbModel(tf.keras.Model):
                 tensor=inputs["segment_ids"],
             ),
         ]
-        albert_pooled_output, _ = self.pretrained_layer(inputs)
-        predictions = self.custom_head(albert_pooled_output)
-        return predictions
+        output, _ = self.pretrained_layer(inputs)
+        if training:
+            output = self.dropout(output, training=training)
+        output = self.dense(output)
+        output = tf.squeeze(output, [-1], name="output")
+        return output
 
     def get_config(self) -> Dict[str, str]:
         """Update config."""
