@@ -3,7 +3,7 @@ import csv
 import tensorflow.compat.v1 as tf
 from typing import List
 import tokenization
-from preprocess import InputExample
+from preprocessing.utils import InputExample
 
 
 class DataProcessor(object):

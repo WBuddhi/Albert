@@ -89,8 +89,7 @@ class StsbModel(tf.keras.Model):
             ),
         ]
         output, _ = self.pretrained_layer(inputs)
-        if training:
-            output = self.dropout(output, training=training)
+        output = self.dropout(output, training=training)
         output = self.dense(output)
         output = tf.squeeze(output, [-1], name="output")
         return output

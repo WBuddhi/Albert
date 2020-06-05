@@ -2,7 +2,7 @@ import os
 from dataprocessor import DataProcessor, StsbProcessor
 from typing import Tuple
 from tokenization import FullTokenizer
-from proprocess_utils import (
+from preprocessing.double_sent_preprocess import (
     file_based_input_fn_builder,
     file_based_convert_examples_to_features,
 )
@@ -21,7 +21,7 @@ def generate_example_datasets(config: dict) -> Tuple:
         test_dataset: test dataset
         config: updated config file
     """
-    stsb_processor = StsbProcessor(
+    processor = StsbProcessor(
         config["spm_model_file"], config["do_lower_case"]
     )
     seq_len = config.get("sequence_len", 512)

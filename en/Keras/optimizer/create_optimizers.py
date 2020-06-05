@@ -1,6 +1,7 @@
 from optimizer.polynomial_decay_with_warmup import PolynomialDecayWarmup
 from optimizer.adamw import AdamWeightDecayOptimizer
 from tensorflow.compat.v1 import logging
+from tensorflow.compat.v1 import keras
 
 
 def create_adam_decoupled_optimizer_with_warmup(
@@ -25,7 +26,7 @@ def create_adam_decoupled_optimizer_with_warmup(
     beta_2 = 0.999
     epsilon = 1e-6
     exclude_from_weight_decay = ["LayerNorm", "layer_norm", "bias"]
-    training_len = config.get("train_size", 5000)
+    training_len = config.get("train_size", None)
     num_train_steps = int((training_len / batch_size) * train_epochs)
     params_log = {
         "Initial learning rate": init_lr,
