@@ -45,10 +45,10 @@ def convert_single_example(
     tokens_a, tokens_b = _truncate_seq_pair(
         tokens_a, tokens_b, max_seq_length - 2
     )
-    input_ids_a, input_mask_a, segment_ids_a = _create_albert_input(
+    input_ids_a, input_mask_a, segment_ids_a = create_albert_input(
         tokens_a=tokens_a, tokenizer=tokenizer, max_seq_length=max_seq_length
     )
-    input_ids_b, input_mask_b, segment_ids_b = _create_albert_input(
+    input_ids_b, input_mask_b, segment_ids_b = create_albert_input(
         tokens_a=tokens_b, tokenizer=tokenizer, max_seq_length=max_seq_length
     )
 
@@ -231,14 +231,14 @@ def file_based_convert_examples_to_features(
         )
 
         features = collections.OrderedDict()
-        features["input_word_ids_a"] = _create_int_feature(feature.input_ids_a)
-        features["input_mask_a"] = _create_int_feature(feature.input_mask_a)
-        features["segment_ids_a"] = _create_int_feature(feature.segment_ids_a)
-        features["input_word_ids_b"] = _create_int_feature(feature.input_ids_b)
-        features["input_mask_b"] = _create_int_feature(feature.input_mask_b)
-        features["segment_ids_b"] = _create_int_feature(feature.segment_ids_b)
-        features["label_ids"] = _create_float_feature([feature.label_id])
-        features["is_real_example"] = _create_int_feature(
+        features["input_word_ids_a"] = create_int_feature(feature.input_ids_a)
+        features["input_mask_a"] = create_int_feature(feature.input_mask_a)
+        features["segment_ids_a"] = create_int_feature(feature.segment_ids_a)
+        features["input_word_ids_b"] = create_int_feature(feature.input_ids_b)
+        features["input_mask_b"] = create_int_feature(feature.input_mask_b)
+        features["segment_ids_b"] = create_int_feature(feature.segment_ids_b)
+        features["label_ids"] = create_float_feature([feature.label_id])
+        features["is_real_example"] = create_int_feature(
             [int(feature.is_real_example)]
         )
 
