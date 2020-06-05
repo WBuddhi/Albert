@@ -38,9 +38,12 @@ def train_model(config: dict):
     else:
         strategy = tf.distribute.MirroredStrategy()
     seq_len = config.get("sequence_len", 512)
-    train_dataset, eval_dataset, test_dataset, config = generate_example_datasets(
-        config
-    )
+    (
+        train_dataset,
+        eval_dataset,
+        test_dataset,
+        config,
+    ) = generate_example_datasets(config)
     # TPU init code
     with strategy.scope():
         model = StsbModel(config.get("albert_hub_module_handle", None))
@@ -79,7 +82,7 @@ def run_test(
     model: keras.Model, test_dataset: tf.data.Dataset,
 ):
     predictions = model.predict(x=test_dataset)
-    output_data = [{'prediction':pred} for pred in predictions]
+    output_data = [{"prediction": pred} for pred in predictions]
     df = pd.DataFrame(output_data)
     result_file = config.get("pred_file", "results.csv")
     df.to_csv(result_file, index=False)

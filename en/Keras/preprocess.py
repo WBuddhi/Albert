@@ -2,7 +2,12 @@ import os
 from dataprocessor import DataProcessor, StsbProcessor
 from typing import Tuple
 from tokenization import FullTokenizer
-from preprocessing.double_sent_preprocess import (
+
+# from preprocessing.double_sent_preprocess import (
+#    file_based_input_fn_builder,
+#    file_based_convert_examples_to_features,
+# )
+from preprocessing.individual_sent_preprocess import (
     file_based_input_fn_builder,
     file_based_convert_examples_to_features,
 )

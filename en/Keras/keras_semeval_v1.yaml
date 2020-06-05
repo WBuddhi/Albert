@@ -12,7 +12,7 @@ spm_model_file: /home/buddhi/Albert/en/Keras/albert_module_hub_v2/assets/30k-cle
 do_train: true
 learning_rate: 5e-5
 do_eval: true
-do_test: true
+do_test: false
 do_lower_case: true
 sequence_len: 512
 num_train_epochs: 5

@@ -58,7 +58,10 @@ def convert_single_example(
             tokens_a = tokens_a[0 : (max_seq_length - 2)]
 
     input_ids, input_mask, segment_ids = create_albert_input(
-        tokens_a=tokens_a, tokens_b=tokens_b, tokenizer=tokenizer, max_seq_length=max_seq_length,
+        tokens_a=tokens_a,
+        tokens_b=tokens_b,
+        tokenizer=tokenizer,
+        max_seq_length=max_seq_length,
     )
     label_id = example.label
 
@@ -191,32 +194,35 @@ def file_based_convert_examples_to_features(
         task_name (str): task_name
     """
 
-    writer = tf.python_io.TFRecordWriter(output_file)
+    if not tf.io.gfile.exists(output_file):
+        writer = tf.python_io.TFRecordWriter(output_file)
 
-    for (ex_index, example) in enumerate(examples):
-        if ex_index % 10000 == 0:
-            tf.logging.info(
-                "Writing example %d of %d" % (ex_index, len(examples))
+        for (ex_index, example) in enumerate(examples):
+            if ex_index % 10000 == 0:
+                tf.logging.info(
+                    "Writing example %d of %d" % (ex_index, len(examples))
+                )
+
+            feature = convert_single_example(
+                ex_index, example, max_seq_length, tokenizer, task_name
             )
 
-        feature = convert_single_example(
-            ex_index, example, max_seq_length, tokenizer, task_name
-        )
+            features = collections.OrderedDict()
+            features["input_word_ids"] = create_int_feature(feature.input_ids)
+            features["input_mask"] = create_int_feature(feature.input_mask)
+            features["segment_ids"] = create_int_feature(feature.segment_ids)
+            features["label_ids"] = create_float_feature([feature.label_id])
+            features["is_real_example"] = create_int_feature(
+                [int(feature.is_real_example)]
+            )
 
-        features = collections.OrderedDict()
-        features["input_word_ids"] = create_int_feature(feature.input_ids)
-        features["input_mask"] = create_int_feature(feature.input_mask)
-        features["segment_ids"] = create_int_feature(feature.segment_ids)
-        features["label_ids"] = create_float_feature([feature.label_id])
-        features["is_real_example"] = create_int_feature(
-            [int(feature.is_real_example)]
-        )
-
-        tf_example = tf.train.Example(
-            features=tf.train.Features(feature=features)
-        )
-        writer.write(tf_example.SerializeToString())
-    writer.close()
+            tf_example = tf.train.Example(
+                features=tf.train.Features(feature=features)
+            )
+            writer.write(tf_example.SerializeToString())
+        writer.close()
+    else:
+        tf.logging.info(f"Output file already exists: {output_file}")
 
 
 def _truncate_seq_pair(
@@ -243,4 +249,3 @@ def _truncate_seq_pair(
             tokens_a.pop()
         else:
             tokens_b.pop()
-

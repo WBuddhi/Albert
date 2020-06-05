@@ -9,10 +9,10 @@ tensorboard_logs: gs://buddhi_albert/model_logs/
 albert_hub_module_handle: gs://buddhi_albert/sts-keras/albert_model_hub_v2
 # Training params
 spm_model_file: /home/buddhi/Albert/en/Keras/albert_module_hub_v2/assets/30k-clean.model
-do_train: true
+do_train: false
 learning_rate: 5e-5
-do_eval: true
-do_test: true
+do_eval: false
+do_test: false
 do_lower_case: true
 sequence_len: 512
 num_train_epochs: 3
