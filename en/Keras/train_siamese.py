@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Tuple, List
 import os
 import argparse
 from datetime import datetime
@@ -8,6 +8,7 @@ import tensorflow.compat.v1 as tf
 from tensorflow.compat.v1 import logging
 import tensorflow.compat.v1.keras.backend as K
 from tensorflow.compat.v1 import keras
+import tensorflow_hub as hub
 from model import StsSiameseModel
 from preprocess import generate_example_datasets
 from optimizer.create_optimizers import (
@@ -46,12 +47,20 @@ def train_model(config: dict):
     ) = generate_example_datasets(config)
     # TPU init code
     with strategy.scope():
-        model = StsSiameseModel(config.get("albert_hub_module_handle", None))
-        print_summary(model, seq_len)
+
+        # Model Subclass
+        # model = StsSiameseModel(config.get("albert_hub_module_handle", None))
+        # print_summary(model, seq_len)
+
+        # Model API
+        model = create_siamese_model(
+            config.get("albert_hub_module_handle", None), seq_len
+        )
+        model.summary()
+
         mse_loss = keras.losses.MeanSquaredError()
         optimizer = create_adam_decoupled_optimizer_with_warmup(config)
         metrics = [
-            keras.metrics.MeanSquaredError(dtype=tf.float32),
             pearson_correlation_metric_fn,
         ]
         model.compile(
@@ -77,6 +86,90 @@ def train_model(config: dict):
         )
     if config.get("do_test", False):
         run_test(model, test_dataset)
+
+
+def create_albert(albert_model_hub, seq_len):
+
+    albert_inputs = [
+        keras.Input(shape=(seq_len,), dtype=tf.int32, name="input_word_ids"),
+        keras.Input(shape=(seq_len,), dtype=tf.int32, name="input_mask"),
+        keras.Input(shape=(seq_len,), dtype=tf.int32, name="segment_ids"),
+    ]
+    pretrained_layer = hub.KerasLayer(
+        albert_model_hub, trainable=True, name="albert_layer",
+    )
+    pooled_output, seq_output = pretrained_layer(albert_inputs)
+    albert_model = keras.Model(albert_inputs, pooled_output, name="albert")
+    return albert_model
+
+def create_albert_pooled(albert_model_hub, seq_len):
+
+    albert_inputs = [
+        keras.Input(shape=(seq_len,), dtype=tf.int32, name="input_word_ids"),
+        keras.Input(shape=(seq_len,), dtype=tf.int32, name="input_mask"),
+        keras.Input(shape=(seq_len,), dtype=tf.int32, name="segment_ids"),
+    ]
+    pretrained_layer = hub.KerasLayer(
+        albert_model_hub, trainable=True, name="albert_layer",
+    )
+    pooling_layer = keras.layers.GlobalAveragePooling1D(name="pooling_layer")
+
+    pooled_output, seq_output = pretrained_layer(albert_inputs)
+    output = pooling_layer(seq_output)
+    albert_model = keras.Model(albert_inputs, output, name="albert")
+    return albert_model
+
+def create_siamese_model(albert_model_hub, seq_len):
+
+    albert_model = create_albert_pooled(albert_model_hub, seq_len)
+    inputs = {
+        "text_a": {
+            "input_word_ids": keras.Input(
+                shape=(seq_len,), dtype=tf.int32, name="input_word_ids_a"
+            ),
+            "input_mask": keras.Input(
+                shape=(seq_len,), dtype=tf.int32, name="input_mask_a"
+            ),
+            "segment_ids": keras.Input(
+                shape=(seq_len,), dtype=tf.int32, name="segment_ids_a"
+            ),
+        },
+        "text_b": {
+            "input_word_ids": keras.Input(
+                shape=(seq_len,), dtype=tf.int32, name="input_word_ids_b"
+            ),
+            "input_mask": keras.Input(
+                shape=(seq_len,), dtype=tf.int32, name="input_mask_b"
+            ),
+            "segment_ids": keras.Input(
+                shape=(seq_len,), dtype=tf.int32, name="segment_ids_b"
+            ),
+        },
+    }
+    inputs_text_a = [
+        inputs["text_a"]["input_word_ids"],
+        inputs["text_a"]["input_mask"],
+        inputs["text_a"]["segment_ids"],
+    ]
+    inputs_text_b = [
+        inputs["text_b"]["input_word_ids"],
+        inputs["text_b"]["input_mask"],
+        inputs["text_b"]["segment_ids"],
+    ]
+    cosine_layer = tf.keras.layers.Dot(
+        axes=1, normalize=True, name="cosine_layer",
+    )
+    dropout_layer = tf.keras.layers.Dropout(rate=0.1, name="dropout")
+
+    siamese_1_output_pooled = albert_model(inputs_text_a)
+    siamese_2_output_pooled = albert_model(inputs_text_b)
+
+    siamese_1_output_pooled = dropout_layer(siamese_1_output_pooled)
+    siamese_2_output_pooled = dropout_layer(siamese_2_output_pooled)
+
+    output = cosine_layer([siamese_1_output_pooled, siamese_2_output_pooled])
+    model = keras.Model(inputs, output)
+    return model
 
 
 def run_test(
@@ -115,7 +208,7 @@ def pearson_correlation_metric_fn(
         y_pred (tf.Tensor): y_pred
 
     Returns:
-        tf.contrib.metrics: pearson correlation
+        tf.Tensor: pearson correlation
     """
 
     x = y_true

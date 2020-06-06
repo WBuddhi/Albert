@@ -85,7 +85,7 @@ def convert_single_example(
         tf.logging.debug(
             "segment_ids: %s" % " ".join([str(x) for x in segment_ids_b])
         )
-        tf.logging.debug("label: %s (id = %d)" % (example.label, label_id))
+        tf.logging.debug("label: %s (id = %f)" % (example.label, label_id))
 
     feature = InputSepFeatures(
         input_ids_a=input_ids_a,
@@ -199,7 +199,6 @@ def file_based_input_fn_builder(
 
 def file_based_convert_examples_to_features(
     examples: InputExample,
-    label_list: List,
     max_seq_length: int,
     tokenizer: tokenization.FullTokenizer,
     output_file: str,
@@ -210,53 +209,41 @@ def file_based_convert_examples_to_features(
 
     Args:
         examples (InputExample): examples
-        label_list (List): label_list
         max_seq_length (int): max_seq_length
         tokenizer (tokenization.FullTokenizer): tokenizer
         output_file (str): output_file
         task_name (str): task_name
     """
 
-    if not tf.io.gfile.exists(output_file):
-        writer = tf.python_io.TFRecordWriter(output_file)
+    writer = tf.python_io.TFRecordWriter(output_file)
 
-        for (ex_index, example) in enumerate(examples):
-            if ex_index % 10000 == 0:
-                tf.logging.info(
-                    "Writing example %d of %d" % (ex_index, len(examples))
-                )
-
-            feature = convert_single_example(
-                ex_index, example, max_seq_length, tokenizer, task_name
+    for (ex_index, example) in enumerate(examples):
+        if ex_index % 10000 == 0:
+            tf.logging.info(
+                "Writing example %d of %d" % (ex_index, len(examples))
             )
 
-            features = collections.OrderedDict()
-            features["input_word_ids_a"] = create_int_feature(
-                feature.input_ids_a
-            )
-            features["input_mask_a"] = create_int_feature(feature.input_mask_a)
-            features["segment_ids_a"] = create_int_feature(
-                feature.segment_ids_a
-            )
-            features["input_word_ids_b"] = create_int_feature(
-                feature.input_ids_b
-            )
-            features["input_mask_b"] = create_int_feature(feature.input_mask_b)
-            features["segment_ids_b"] = create_int_feature(
-                feature.segment_ids_b
-            )
-            features["label_id"] = create_float_feature([feature.label_id])
-            features["is_real_example"] = create_int_feature(
-                [int(feature.is_real_example)]
-            )
+        feature = convert_single_example(
+            ex_index, example, max_seq_length, tokenizer, task_name
+        )
 
-            tf_example = tf.train.Example(
-                features=tf.train.Features(feature=features)
-            )
-            writer.write(tf_example.SerializeToString())
-        writer.close()
-    else:
-        tf.logging.info(f"Output file already exists: {output_file}")
+        features = collections.OrderedDict()
+        features["input_word_ids_a"] = create_int_feature(feature.input_ids_a)
+        features["input_mask_a"] = create_int_feature(feature.input_mask_a)
+        features["segment_ids_a"] = create_int_feature(feature.segment_ids_a)
+        features["input_word_ids_b"] = create_int_feature(feature.input_ids_b)
+        features["input_mask_b"] = create_int_feature(feature.input_mask_b)
+        features["segment_ids_b"] = create_int_feature(feature.segment_ids_b)
+        features["label_id"] = create_float_feature([feature.label_id])
+        features["is_real_example"] = create_int_feature(
+            [int(feature.is_real_example)]
+        )
+
+        tf_example = tf.train.Example(
+            features=tf.train.Features(feature=features)
+        )
+        writer.write(tf_example.SerializeToString())
+    writer.close()
 
 
 def _truncate_seq_pair(

@@ -34,7 +34,6 @@ def generate_example_datasets(config: dict) -> Tuple:
         train_file,
         eval_file,
         test_file,
-        test_examples,
         config,
     ) = create_train_eval_input_files(config, processor)
 
@@ -89,7 +88,6 @@ def create_train_eval_input_files(
     test_file = os.path.join(cached_dir, task_name + "_test.tf_record")
     test_examples = processor.get_test_examples(data_dir)
     config["test_size"] = len(test_examples)
-    label_list = processor.get_labels()
     tokenizer = _get_tokenizer(config)
     for data_file, examples in zip(
         (train_file, eval_file, test_file),
@@ -97,13 +95,12 @@ def create_train_eval_input_files(
     ):
         file_based_convert_examples_to_features(
             examples,
-            label_list,
             config.get("sequence_len", 512),
             tokenizer,
             data_file,
             task_name,
         )
-    return train_file, eval_file, test_file, test_examples, config
+    return train_file, eval_file, test_file, config
 
 
 def _get_tokenizer(config: dict) -> FullTokenizer:

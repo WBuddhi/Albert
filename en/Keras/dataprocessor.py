@@ -18,6 +18,7 @@ class DataProcessor(object):
             do_lower_case (bool): do_lower_case
         """
         super(DataProcessor, self).__init__()
+        self.normalize = True
         self.use_spm = use_spm
         self.do_lower_case = do_lower_case
 
@@ -168,7 +169,7 @@ class StsbProcessor(DataProcessor):
             text_a = self.process_text(line[7])
             text_b = self.process_text(line[8])
             if set_type != "test":
-                label = float(line[-1])
+                label = (float(line[-1]) - 0.0) / (5.0)
             else:
                 label = 0
             examples.append(

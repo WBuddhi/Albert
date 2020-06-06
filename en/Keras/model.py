@@ -81,20 +81,14 @@ class StsSiameseModel(tf.keras.Model):
 
         super().__init__()
         self.albert_hub_model = albert_hub_model
-        self.pretrained_layer_1 = hub.KerasLayer(
+        kernel_initializer = tf.keras.initializers.TruncatedNormal(stddev=0.02)
+        bias_initializer = tf.keras.initializers.zeros()
+
+        self.pretrained_layer = hub.KerasLayer(
             self.albert_hub_model, trainable=True, name="albert_layer_1",
         )
-        self.pretrained_layer_2 = hub.KerasLayer(
-            self.albert_hub_model, trainable=True, name="albert_layer_2",
-        )
-        #self.dropout_1 = tf.keras.layers.Dropout(
-        #    rate=0.1, name="dropout_layer_1"
-        #)
-        #self.dropout_2 = tf.keras.layers.Dropout(
-        #    rate=0.1, name="dropout_layer_2"
-        #)
         self.cosine_layer = tf.keras.layers.Dot(
-            axes=1, normalize=True, name="cosine_layer", trainable=False,
+            axes=1, normalize=True, name="cosine_layer",
         )
 
     def call(self, inputs: tf.Tensor, training: bool = None) -> tf.Tensor:
@@ -106,26 +100,31 @@ class StsSiameseModel(tf.keras.Model):
             inputs["text_a"]["input_mask"],
             inputs["text_a"]["segment_ids"],
         ]
-
         inputs_text_b = [
             inputs["text_b"]["input_word_ids"],
             inputs["text_b"]["input_mask"],
             inputs["text_b"]["segment_ids"],
         ]
-        siamese_1_output, _ = self.pretrained_layer_1(inputs_text_a)
-        siamese_2_output, _ = self.pretrained_layer_2(inputs_text_b)
+        siamese_1_output_pooled, siamese_1_output_seq = self.pretrained_layer(
+            inputs_text_a
+        )
+        siamese_2_output_pooled, siamese_2_output_seq = self.pretrained_layer(
+            inputs_text_b
+        )
 
-        #if training:
-        #    siamese_1_output = self.dropout_1(
-        #        siamese_1_output, training=training
-        #    )
+        # if training:
+        #   siamese_1_output_pooled = self.dropout_1(
+        #       siamese_1_output_pooled, training=training
+        #   )
 
-        #    siamese_2_output = self.dropout_2(
-        #        siamese_2_output, training=training
-        #    )
+        #   siamese_2_output_pooled = self.dropout_2(
+        #       siamese_2_output_pooled, training=training
+        #   )
 
-        output = self.cosine_layer([siamese_1_output, siamese_2_output])
-        output = tf.squeeze(output, [-1], name="output")
+        output = self.cosine_layer(
+            [siamese_1_output_pooled, siamese_2_output_pooled]
+        )
+        # output = tf.squeeze(output, [-1], name="output")
 
         return output
 
@@ -139,14 +138,30 @@ class StsSiameseModel(tf.keras.Model):
         sample_tensor = keras.Input(shape=(sequence_len,), dtype=tf.int32)
         inputs = {
             "text_a": {
-                "input_word_ids": sample_tensor,
-                "input_mask": sample_tensor,
-                "segment_ids": sample_tensor,
+                "input_word_ids": keras.Input(
+                    shape=(sequence_len,),
+                    dtype=tf.int32,
+                    name="input_word_ids",
+                ),
+                "input_mask": keras.Input(
+                    shape=(sequence_len,), dtype=tf.int32, name="input_mask"
+                ),
+                "segment_ids": keras.Input(
+                    shape=(sequence_len,), dtype=tf.int32, name="segment_ids"
+                ),
             },
             "text_b": {
-                "input_word_ids": sample_tensor,
-                "input_mask": sample_tensor,
-                "segment_ids": sample_tensor,
+                "input_word_ids": keras.Input(
+                    shape=(sequence_len,),
+                    dtype=tf.int32,
+                    name="input_word_ids",
+                ),
+                "input_mask": keras.Input(
+                    shape=(sequence_len,), dtype=tf.int32, name="input_mask"
+                ),
+                "segment_ids": keras.Input(
+                    shape=(sequence_len,), dtype=tf.int32, name="segment_ids"
+                ),
             },
         }
         return inputs
