@@ -17,7 +17,7 @@ do_eval: true
 do_test: true
 do_lower_case: true
 sequence_len: 100
-num_train_epochs: 20
+num_train_epochs: 10
 train_batch_size: 16
 eval_batch_size: 16
 test_batch_size: 8
