@@ -2,7 +2,7 @@ import os
 from dataprocessor import DataProcessor, StsbProcessor
 from typing import Tuple
 from tokenization import FullTokenizer
-from transformers import AlbertTokenizer
+from transformers import BertTokenizer
 
 # from preprocessing.double_sent_preprocess import (
 #    file_based_input_fn_builder,
@@ -115,7 +115,7 @@ def _get_tokenizer(config: dict) -> FullTokenizer:
         FullTokenizer:
     """
     
-    return AlbertTokenizer.from_pretrained('albert-base-v2')
+    return BertTokenizer.from_pretrained('bert-base-uncased')
     #return FullTokenizer(
     #    vocab_file=config.get("vocab_file", None),
     #    do_lower_case=config.get("do_lower_case", True),

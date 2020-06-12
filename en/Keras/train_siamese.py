@@ -9,7 +9,7 @@ from tensorflow.compat.v1 import logging
 import tensorflow.compat.v1.keras.backend as K
 from tensorflow.compat.v1 import keras
 import tensorflow_hub as hub
-from transformers import TFAlbertModel
+from transformers import TFBertModel
 from model import StsSiameseModel
 from preprocess import generate_example_datasets
 from optimizer.create_optimizers import (
@@ -134,7 +134,7 @@ def create_albert_transformer_pooled(seq_len, name='Albert'):
         keras.Input(shape=(seq_len,), dtype=tf.int32, name="attention_mask"),
         keras.Input(shape=(seq_len,), dtype=tf.int32, name="token_type_ids"),
     ]
-    pretrained_layer = TFAlbertModel.from_pretrained('albert-base-v2')
+    pretrained_layer = TFBertModel.from_pretrained('bert-base-uncased')
     seq_output, pooled_output= pretrained_layer(albert_inputs)
     tf.logging.debug(pooled_output)
 
