@@ -2,6 +2,7 @@ import os
 from dataprocessor import DataProcessor, StsbProcessor
 from typing import Tuple
 from tokenization import FullTokenizer
+from transformers import AlbertTokenizer
 
 # from preprocessing.double_sent_preprocess import (
 #    file_based_input_fn_builder,
@@ -27,7 +28,7 @@ def generate_example_datasets(config: dict) -> Tuple:
         config: updated config file
     """
     processor = StsbProcessor(
-        config["spm_model_file"], config["do_lower_case"]
+        config.get("spm_model_file",False), config.get("do_lower_case", False), config.get("normalize_labels", True),
     )
     seq_len = config.get("sequence_len", 512)
     (
@@ -113,8 +114,10 @@ def _get_tokenizer(config: dict) -> FullTokenizer:
     Returns:
         FullTokenizer:
     """
-    return FullTokenizer(
-        vocab_file=None,
-        do_lower_case=config.get("do_lower_case", True),
-        spm_model_file=config.get("spm_model_file", ""),
-    )
+    
+    return AlbertTokenizer.from_pretrained('albert-base-v2')
+    #return FullTokenizer(
+    #    vocab_file=config.get("vocab_file", None),
+    #    do_lower_case=config.get("do_lower_case", True),
+    #    spm_model_file=config.get("spm_model_file", None),
+    #)

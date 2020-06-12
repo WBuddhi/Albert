@@ -1,23 +1,23 @@
 # Local directories
 task_name: SemEval
 data_dir: /home/buddhi/Albert/en/Data/
-output_dir: gs://buddhi_albert/sts-keras/
-cached_dir: gs://buddhi_albert/sts-keras/cache
-pred_file: gs://buddhi_albert/sts-keras/results.csv
-tensorboard_logs: gs://buddhi_albert/model_logs/ 
+output_dir: gs://buddhi_bert/sts-keras/
+cached_dir: gs://buddhi_bert/sts-keras/cache
+pred_file: gs://buddhi_bert/sts-keras/results.csv
+tensorboard_logs: gs://buddhi_bert/model_logs/ 
 # Model hub url
-model_hub_module_handle: gs://buddhi_albert/sts-keras/albert_model_hub_v2
+model_hub_module_handle: gs://buddhi_bert/sts-keras/bert_model_hub_v2
 # Training params
-pretrained_model_name: Albert
-spm_model_file: /home/buddhi/Albert/en/Keras/albert_module_hub_v2/assets/30k-clean.model
+pretrained_model_name: Bert
+vocab_file: /home/buddhi/Albert/en/Keras/bert_module_hub_v2/assets/vocab.txt
 do_train: true
 use_dropout: true
 learning_rate: 2e-5
 do_eval: true
-do_test: true
-do_lower_case: true
-sequence_len: 100
-num_train_epochs: 20
+do_test: false
+do_lower_case: false
+sequence_len: 250
+num_train_epochs: 10
 train_batch_size: 16
 eval_batch_size: 16
 test_batch_size: 8

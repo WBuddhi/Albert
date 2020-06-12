@@ -20,7 +20,7 @@ def create_adam_decoupled_optimizer_with_warmup(
     init_lr = float(config.get("learning_rate", 5e-5))
     batch_size = config.get("train_batch_size", 32)
     train_epochs = config.get("num_train_epochs", 5)
-    num_warmup_steps = config.get("warmup_steps", 0)
+    warmup_perc = config.get("warmup_perc", 10)
     weight_decay_rate = 0.01
     beta_1 = 0.9
     beta_2 = 0.999
@@ -28,6 +28,7 @@ def create_adam_decoupled_optimizer_with_warmup(
     exclude_from_weight_decay = ["LayerNorm", "layer_norm", "bias"]
     training_len = config.get("train_size", None)
     num_train_steps = int((training_len / batch_size) * train_epochs)
+    num_warmup_steps = int((num_train_steps / 100) * 10)
     params_log = {
         "Initial learning rate": init_lr,
         "Number of training steps": num_train_steps,
