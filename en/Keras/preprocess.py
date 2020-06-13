@@ -19,12 +19,8 @@ def generate_example_datasets(config: dict) -> Tuple:
 
     Args:
         config (dict): config
-        processor (object): processor
     Returns:
-        train_dataset: training dataset
-        eval_dataset: evaluation dataset
-        test_dataset: test dataset
-        config: updated config file
+        Tuple: (train_dataset, eval_dataset, test_dataset, config)
     """
     processor = StsbProcessor(
         config.get("spm_model_file", False),
