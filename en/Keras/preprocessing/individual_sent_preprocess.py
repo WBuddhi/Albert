@@ -187,7 +187,9 @@ def file_based_input_fn_builder(
         dataset = tf.data.TFRecordDataset(input_file)
         if is_training:
             dataset = dataset.repeat()
-            dataset = dataset.shuffle(buffer_size=100, reshuffle_each_iteration=True)
+            dataset = dataset.shuffle(
+                buffer_size=100, reshuffle_each_iteration=True
+            )
         dataset = dataset.map(
             lambda record: _decode_record(record, name_to_features)
         )

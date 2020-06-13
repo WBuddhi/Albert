@@ -8,8 +8,8 @@ import tensorflow.compat.v1 as tf
 from tensorflow.compat.v1 import logging
 import tensorflow.compat.v1.keras.backend as K
 from tensorflow.compat.v1 import keras
-import tensorflow_hub as hub
-from transformers import TFBertModel
+
+from transformers import TFAutoModel
 from model import StsSiameseModel
 from preprocess import generate_example_datasets
 from optimizer.create_optimizers import (
@@ -49,16 +49,13 @@ def train_model(config: dict):
     # TPU init code
     with strategy.scope():
 
-        # Model Subclass
-        # model = StsSiameseModel(config.get("albert_hub_module_handle", None))
-        # print_summary(model, seq_len)
-
-        # Model API
         model = create_siamese_model(
-            config.get("model_hub_module_handle", None),
+            config.get("transformer_name_path", None),
             seq_len,
             use_dropout=config.get("use_dropout", True),
-            pretrained_model_name=config.get("pretrained_model_name", "Albert")
+            pretrained_model_name=config.get(
+                "pretrained_model_name", "Albert"
+            ),
         )
         model.summary()
 
@@ -92,66 +89,49 @@ def train_model(config: dict):
         run_test(model, test_dataset)
 
 
-def create_albert_cls(model_hub, seq_len, name="Albert"):
+def create_albert_cls(model_name_path, seq_len, name="Albert"):
 
     albert_inputs = [
         keras.Input(shape=(seq_len,), dtype=tf.int32, name="input_word_ids"),
         keras.Input(shape=(seq_len,), dtype=tf.int32, name="input_mask"),
         keras.Input(shape=(seq_len,), dtype=tf.int32, name="segment_ids"),
     ]
-    pretrained_layer = hub.KerasLayer(
-        model_hub, trainable=True, name=f"{name}_layer",
-    )
-    pooled_output, seq_output = pretrained_layer(albert_inputs)
-    albert_model = keras.Model(albert_inputs, pooled_output, name="Albert")
-    return albert_model
+    pretrained_layer = TFAutoModel.from_pretrained(model_name_path)
+    seq_output, pooled_output = pretrained_layer(albert_inputs)
+    model = keras.Model(albert_inputs, pooled_output, name="Albert")
+    return model
 
 
-def create_albert_pooled(model_hub, seq_len, name='Albert'):
+def create_pretrained_pooled_model(model_name_path, seq_len, name="Albert"):
 
-    albert_inputs = [
-        keras.Input(shape=(seq_len,), dtype=tf.int32, name="input_word_ids"),
-        keras.Input(shape=(seq_len,), dtype=tf.int32, name="input_mask"),
-        keras.Input(shape=(seq_len,), dtype=tf.int32, name="segment_ids"),
-    ]
-    pretrained_layer = hub.KerasLayer(
-        model_hub, trainable=True, name=f"{name}_layer",
-    )
-    pooling_layer = keras.layers.GlobalAveragePooling1D(name="pooling_layer")
-
-    pooled_output, seq_output = pretrained_layer(albert_inputs)
-    attention_mask = albert_inputs[1]
-    output = pooling_layer(inputs=seq_output, mask=attention_mask)
-
-    albert_model = keras.Model(albert_inputs, output, name=name)
-    return albert_model
-
-
-def create_albert_transformer_pooled(seq_len, name='Albert'):
-
-    albert_inputs = [
+    inputs = [
         keras.Input(shape=(seq_len,), dtype=tf.int32, name="input_ids"),
         keras.Input(shape=(seq_len,), dtype=tf.int32, name="attention_mask"),
         keras.Input(shape=(seq_len,), dtype=tf.int32, name="token_type_ids"),
     ]
-    pretrained_layer = TFBertModel.from_pretrained('bert-base-uncased')
-    seq_output, pooled_output= pretrained_layer(albert_inputs)
+    pretrained_layer = TFAutoModel.from_pretrained(model_name_path)
+    seq_output, pooled_output = pretrained_layer(inputs)
     tf.logging.debug(pooled_output)
 
+    avg_masked_pooling_layer = keras.layers.GlobalAveragePooling1D(
+        name="Avg_masked_pooling_layer"
+    )
 
-    pooling_layer = keras.layers.GlobalAveragePooling1D(name="pooling_layer")
+    seq_output, pooled_output = pretrained_layer(inputs)[0]
+    attention_mask = inputs[1]
+    output = avg_masked_pooling_layer(inputs=seq_output, mask=attention_mask)
 
-    seq_output = pretrained_layer(albert_inputs)[0]
-    attention_mask = albert_inputs[1]
-    output = pooling_layer(inputs=seq_output, mask=attention_mask)
+    model = keras.Model(inputs, output, name=name)
+    return model
 
-    albert_model = keras.Model(albert_inputs, output, name=name)
-    return albert_model
 
-def create_siamese_model(model_hub, seq_len, use_dropout=True, pretrained_model_name='Albert'):
+def create_siamese_model(
+    model_name_path, seq_len, use_dropout=True, pretrained_model_name="Albert"
+):
 
-    #pretrained_model = create_albert_pooled(model_hub, seq_len, pretrained_model_name)
-    pretrained_model = create_albert_transformer_pooled(seq_len, pretrained_model_name)
+    pretrained_model = create_pretrained_pooled_model(
+        model_name_path, seq_len, pretrained_model_name
+    )
     cosine_layer = tf.keras.layers.Dot(
         axes=1, normalize=True, name="cosine_layer",
     )

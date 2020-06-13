@@ -1,15 +1,18 @@
 import os
 import csv
+import six
+import unicodedata
 import tensorflow.compat.v1 as tf
 from typing import List
-import tokenization
 from preprocessing.utils import InputExample
 
 
 class DataProcessor(object):
     """Base class for data converters for sequence classification data sets."""
 
-    def __init__(self, use_spm: bool, do_lower_case: bool, normalize: bool = False):
+    def __init__(
+        self, use_spm: bool, do_lower_case: bool, normalize: bool = False
+    ):
         """
         Initializes DataProcessor.
 
@@ -83,9 +86,63 @@ class DataProcessor(object):
             str:
         """
         if self.use_spm:
-            return tokenization.preprocess_text(text, lower=self.do_lower_case)
-        else:
-            return tokenization.convert_to_unicode(text)
+            return self.preprocess_text(text, lower=self.do_lower_case)
+        return self.convert_to_unicode(text)
+
+    @classmethod
+    def preprocess_text(
+        cls, inputs: str, remove_space: bool = True, lower: bool = False
+    ) -> str:
+        """Preprocess data by removing extra space and normalize data.
+
+        Args:
+            inputs (str): inputs
+            remove_space (bool): remove_space
+            lower (bool): lower
+
+        Returns:
+            str:
+        """
+        outputs = inputs
+        if remove_space:
+            outputs = " ".join(inputs.strip().split())
+
+        if six.PY2 and isinstance(outputs, str):
+            try:
+                outputs = six.ensure_text(outputs, "utf-8")
+            except UnicodeDecodeError:
+                outputs = six.ensure_text(outputs, "latin-1")
+
+        outputs = unicodedata.normalize("NFKD", outputs)
+        outputs = "".join([c for c in outputs if not unicodedata.combining(c)])
+        if lower:
+            outputs = outputs.lower()
+
+        return outputs
+
+    @classmethod
+    def convert_to_unicode(cls, text: str) -> str:
+        """Converts `text` to Unicode (if it's not already), assuming utf-8 input.
+
+        Args:
+            text (str): text
+
+        Returns:
+            str:
+        """
+        if six.PY3:
+            if isinstance(text, str):
+                return text
+            elif isinstance(text, bytes):
+                return six.ensure_text(text, "utf-8", "ignore")
+            raise ValueError("Unsupported string type: %s" % (type(text)))
+        elif six.PY2:
+            if isinstance(text, str):
+                return six.ensure_text(text, "utf-8", "ignore")
+            elif isinstance(text, six.text_type):
+                return text
+            raise ValueError("Unsupported string type: %s" % (type(text)))
+        raise ValueError("Not running on Python2 or Python 3?")
 
 
 class StsbProcessor(DataProcessor):
@@ -146,6 +203,14 @@ class StsbProcessor(DataProcessor):
         )
 
     def get_labels(self) -> List[None]:
+        """
+        Get labels.
+
+        Args:
+
+        Returns:
+            List[None]:
+        """
         return [None]
 
     def _create_examples(
