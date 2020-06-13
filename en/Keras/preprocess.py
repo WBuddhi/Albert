@@ -2,7 +2,7 @@ import os
 from dataprocessor import DataProcessor, StsbProcessor
 from typing import Tuple
 from tokenization import FullTokenizer
-from transformers import TFAutoTokenizer
+from transformers import AutoTokenizer
 
 # from preprocessing.double_sent_preprocess import (
 #    file_based_input_fn_builder,
@@ -116,4 +116,4 @@ def _get_tokenizer(config: dict) -> FullTokenizer:
     Returns:
         FullTokenizer:
     """
-    return TFAutoTokenizer.from_pretrained(config.get("model_name_path", None))
+    return AutoTokenizer.from_pretrained(config.get("transformer_name_path", None))

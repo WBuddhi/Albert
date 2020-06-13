@@ -117,7 +117,7 @@ def create_pretrained_pooled_model(model_name_path, seq_len, name="Albert"):
         name="Avg_masked_pooling_layer"
     )
 
-    seq_output, pooled_output = pretrained_layer(inputs)[0]
+    seq_output, pooled_output = pretrained_layer(inputs)
     attention_mask = inputs[1]
     output = avg_masked_pooling_layer(inputs=seq_output, mask=attention_mask)
 
