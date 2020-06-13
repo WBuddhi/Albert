@@ -103,8 +103,8 @@ class StsSiameseModel(tf.keras.Model):
         self,
         model_name_path: str,
         sequence_len: int,
-        pretrained_model_pooled: bool,
         pretrained_model_name: str,
+        use_avg_pooled_model: bool = True,
         use_dropout: bool = True,
         name: str = "StsSiameseModel",
     ):
@@ -123,14 +123,14 @@ class StsSiameseModel(tf.keras.Model):
         self.sequence_len = sequence_len
         self.pretrained_model_name = pretrained_model_name
         self.use_dropout = use_dropout
-        self.pretrained_model_pooled = pretrained_model_pooled
+        self.use_avg_pooled_model = use_avg_pooled_model
         self.name = name
         super().__init__()
         self.pretrained_model = (
             PretrainedModelAvgPooling(
                 self.model_name_path, self.pretrained_model_name
             )
-            if self.pretrained_model_pooled
+            if self.use_avg_pooled_model
             else PretrainedModelCls(
                 self.model_name_path, self.pretrained_model_name
             )
@@ -173,11 +173,54 @@ class StsSiameseModel(tf.keras.Model):
                 "model_name_path": self.model_name_path,
                 "sequence_len": self.sequence_len,
                 "pretrained_model_name": self.pretrained_model_name,
-                "pretrained_model_pooled": self.pretrained_model_pooled,
+                "use_avg_pooled_model": self.use_avg_pooled_model,
                 "use_dropout": self.use_dropout,
             }
         )
         return config
+
+    @classmethod
+    def sample_input(cls, sequence_len: int) -> Dict[str, tf.Tensor]:
+        """
+        Returns sample inputs.
+
+        Args:
+            sequence_len (int): sequence_len
+        Returns:
+            Dict[str, tf.Tensor]:
+        """
+        inputs = {
+            "text_a": {
+                "input_ids": keras.Input(
+                    shape=(sequence_len,), dtype=tf.int32, name="input_ids",
+                ),
+                "attention_mask": keras.Input(
+                    shape=(sequence_len,),
+                    dtype=tf.int32,
+                    name="attention_mask",
+                ),
+                "token_type_ids": keras.Input(
+                    shape=(sequence_len,),
+                    dtype=tf.int32,
+                    name="token_type_ids",
+                ),
+            },
+            "text_b": {
+                "input_ids": keras.Input(
+                    shape=(sequence_len,), dtype=tf.int32, name="input_ids",
+                ),
+                "attention_mask": keras.Input(
+                    shape=(sequence_len,),
+                    dtype=tf.int32,
+                    name="attention_mask",
+                ),
+                "token_type_ids": keras.Input(
+                    shape=(sequence_len,),
+                    dtype=tf.int32,
+                    name="token_type_ids",
+                ),
+            },
+        }
 
 
 class StsbModel(tf.keras.Model):

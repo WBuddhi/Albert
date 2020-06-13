@@ -49,14 +49,21 @@ def train_model(config: dict):
     # TPU init code
     with strategy.scope():
 
-        model = create_siamese_model(
-            config.get("transformer_name_path", None),
-            seq_len,
-            use_dropout=config.get("use_dropout", True),
-            pretrained_model_name=config.get(
-                "pretrained_model_name", "Albert"
-            ),
+        model_name_path = config.get("transformer_name_path", None)
+        pretrained_model_name = config.get("pretrained_model_name", "Unknown")
+
+        model = StsSiameseModel(
+            model_name_path, seq_len, pretrained_model_name
         )
+        model(model.sample_input())
+        # model = create_siamese_model(
+        #    config.get("transformer_name_path", None),
+        #    seq_len,
+        #    use_dropout=config.get("use_dropout", True),
+        #    pretrained_model_name=config.get(
+        #        "pretrained_model_name", "Albert"
+        #    ),
+        # )
         model.summary()
 
         mse_loss = keras.losses.MeanSquaredError()
