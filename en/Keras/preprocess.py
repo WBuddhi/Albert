@@ -1,7 +1,6 @@
 import os
 from dataprocessor import DataProcessor, StsbProcessor
 from typing import Tuple
-from tokenization import FullTokenizer
 from transformers import AutoTokenizer
 
 # from preprocessing.double_sent_preprocess import (
@@ -106,7 +105,7 @@ def create_train_eval_input_files(
     return train_file, eval_file, test_file, config
 
 
-def _get_tokenizer(config: dict) -> FullTokenizer:
+def _get_tokenizer(config: dict) -> AutoTokenizer:
     """
     Get tokenizer.
 
