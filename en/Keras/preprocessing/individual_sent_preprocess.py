@@ -164,14 +164,14 @@ def file_based_input_fn_builder(
 
         inputs = {
             "text_a": {
-                "input_word_ids": example["input_word_ids_a"],
-                "input_mask": example["input_mask_a"],
-                "segment_ids": example["segment_ids_a"],
+                "input_ids": example["input_word_ids_a"],
+                "attention_mask": example["input_mask_a"],
+                "token_type_ids": example["segment_ids_a"],
             },
             "text_b": {
-                "input_word_ids": example["input_word_ids_b"],
-                "input_mask": example["input_mask_b"],
-                "segment_ids": example["segment_ids_b"],
+                "input_ids": example["input_word_ids_b"],
+                "attention_mask": example["input_mask_b"],
+                "token_type_ids": example["segment_ids_b"],
             },
         }
 

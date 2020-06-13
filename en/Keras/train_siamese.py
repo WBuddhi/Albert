@@ -144,7 +144,6 @@ def create_pretrained_pooled_model(
     ]
     pretrained_layer = TFAutoModel.from_pretrained(model_name_path)
     seq_output, pooled_output = pretrained_layer(inputs)
-    tf.logging.debug(pooled_output)
 
     avg_masked_pooling_layer = keras.layers.GlobalAveragePooling1D(
         name="Avg_masked_pooling_layer"
