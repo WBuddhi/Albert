@@ -111,4 +111,6 @@ def _get_tokenizer(config: dict) -> AutoTokenizer:
     Returns:
         FullTokenizer:
     """
-    return AutoTokenizer.from_pretrained(config.get("transformer_name_path", None))
+    return AutoTokenizer.from_pretrained(
+        config.get("transformer_name_path", None)
+    )

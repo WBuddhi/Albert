@@ -89,7 +89,23 @@ def train_model(config: dict):
         run_test(model, test_dataset)
 
 
-def create_albert_cls(model_name_path, seq_len, name="Albert"):
+def create_albert_cls(
+    model_name_path: str, seq_len: int, name: str = "Albert"
+) -> keras.Model:
+    """
+    Create pretrained model based on classification output.
+
+    Model uses pooled output from model which uses the classification
+    embedding to represent sentence embedding.
+
+    Args:
+        model_name_path (str): model_name_path
+        seq_len (int): seq_len
+        name (str): name
+
+    Returns:
+        keras.Model:
+    """
 
     albert_inputs = [
         keras.Input(shape=(seq_len,), dtype=tf.int32, name="input_word_ids"),
@@ -102,7 +118,24 @@ def create_albert_cls(model_name_path, seq_len, name="Albert"):
     return model
 
 
-def create_pretrained_pooled_model(model_name_path, seq_len, name="Albert"):
+def create_pretrained_pooled_model(
+    model_name_path: str, seq_len: int, name: str = "Albert"
+) -> keras.Model:
+    """
+    Create pretrained model based on pooled sequence embedding.
+
+    Model uses sequence embeddings which is masked using attention mask
+    input into the model and applying mean pooling to create sentence
+    embedding.
+
+    Args:
+        model_name_path (str): model_name_path
+        seq_len (int): seq_len
+        name (str): name
+
+    Returns:
+        keras.Model:
+    """
 
     inputs = [
         keras.Input(shape=(seq_len,), dtype=tf.int32, name="input_ids"),
@@ -126,8 +159,23 @@ def create_pretrained_pooled_model(model_name_path, seq_len, name="Albert"):
 
 
 def create_siamese_model(
-    model_name_path, seq_len, use_dropout=True, pretrained_model_name="Albert"
-):
+    model_name_path: str,
+    seq_len: int,
+    use_dropout: bool = True,
+    pretrained_model_name: str = "Albert",
+) -> keras.Model:
+    """
+    Create siamese model on defined Pretrained model.
+
+    Args:
+        model_name_path (str): model_name_path
+        seq_len (int): seq_len
+        use_dropout (bool): use_dropout
+        pretrained_model_name (str): pretrained_model_name
+
+    Returns:
+        keras.Model:
+    """
 
     pretrained_model = create_pretrained_pooled_model(
         model_name_path, seq_len, pretrained_model_name
@@ -186,6 +234,13 @@ def create_siamese_model(
 def run_test(
     model: keras.Model, test_dataset: tf.data.Dataset,
 ):
+    """
+    Run model on test set.
+
+    Args:
+        model (keras.Model): model
+        test_dataset (tf.data.Dataset): test_dataset
+    """
     predictions = model.predict(x=test_dataset)
     output_data = [{"prediction": pred[0]} for pred in predictions]
     df = pd.DataFrame(output_data)
@@ -195,6 +250,13 @@ def run_test(
 
 
 def print_summary(model: keras.Model, sequence_len):
+    """
+    Prints and saves model summary.
+
+    Args:
+        model (keras.Model): model
+        sequence_len:
+    """
     sample_input = model.get_sample_input(sequence_len)
     model(sample_input)
     model.summary()
