@@ -1,12 +1,11 @@
 # Local directories
-task_name: SemEval
+task_name: SemEval_siamese_bert
 data_dir: /home/buddhi/Albert/en/Data/
 output_dir: gs://buddhi_bert/sts-keras/
 cached_dir: gs://buddhi_bert/sts-keras/cache
 pred_file: gs://buddhi_bert/sts-keras/results.csv
 tensorboard_logs: gs://buddhi_bert/model_logs/ 
 # Model hub url
-model_hub_module_handle: gs://buddhi_bert/sts-keras/bert_model_hub_v2
 transformer_name_path: bert-base-cased
 pretrained_model_name: Bert
 # Training params

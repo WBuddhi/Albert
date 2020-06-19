@@ -41,9 +41,7 @@ def train_model(config: dict):
         strategy = tf.distribute.MirroredStrategy()
     seq_len = config.get("sequence_len", 512)
     (
-        train_dataset,
-        eval_dataset,
-        test_dataset,
+        model_datasets,
         config,
     ) = generate_example_datasets(config)
     # TPU init code
@@ -80,17 +78,18 @@ def train_model(config: dict):
     )
     if config.get("do_train", True):
         model.fit(
-            x=train_dataset,
+            x=model_datasets['train'],
             epochs=config.get("num_train_epochs", 5),
             steps_per_epoch=int(
                 config.get("train_size", None)
                 / config.get("train_batch_size", None)
             ),
-            validation_data=eval_dataset,
+            validation_data=model_datasets['eval'],
+            validation_steps=config.get("eval_size", None),
             callbacks=[tensorboard_callback],
         )
     if config.get("do_test", False):
-        run_test(model, test_dataset)
+        run_test(model, model_datasets['test'])
 
 
 def run_test(

@@ -1,7 +1,7 @@
 import tensorflow.compat.v1 as tf
 from tensorflow.compat.v1 import keras
 from tensorflow.compat.v1.keras import backend as K
-from transformers import TFAutoModel
+from transformers import TFAutoModel, TFAlbertModel
 from typing import Dict
 
 
@@ -78,7 +78,7 @@ class PretrainedModelCls(tf.keras.Model):
         self.model_name_path = model_name_path
         self.use_dropout = use_dropout
         super().__init__()
-        self.pretrained_layer = TFAutoModel.from_pretrained(model_name_path)
+        self.pretrained_layer = TFAlbertModel.from_pretrained(model_name_path)
         self.dropout_layer = (
             tf.keras.layers.Dropout(rate=0.1, name="Dropout_layer")
             if self.use_dropout
@@ -97,7 +97,10 @@ class PretrainedModelCls(tf.keras.Model):
             tf.Tensor:
         """
 
-        _, cls_output = self.pretrained_layer(inputs)
+        _, cls_output = self.pretrained_layer(
+            inputs,
+            training=training,
+        )
         if self.use_dropout and training:
             cls_output = self.dropout_layer(cls_output)
         return cls_output

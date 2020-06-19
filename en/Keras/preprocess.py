@@ -3,15 +3,15 @@ from dataprocessor import DataProcessor, StsbProcessor
 from typing import Tuple
 from transformers import AutoTokenizer
 
-#from preprocessing.double_sent_preprocess import (
-#    file_based_input_fn_builder,
-#    file_based_convert_examples_to_features,
-#)
-
-from preprocessing.individual_sent_preprocess import (
-   file_based_input_fn_builder,
-   file_based_convert_examples_to_features,
+from preprocessing.double_sent_preprocess import (
+    file_based_input_fn_builder,
+    file_based_convert_examples_to_features,
 )
+
+#from preprocessing.individual_sent_preprocess import (
+#  file_based_input_fn_builder,
+#  file_based_convert_examples_to_features,
+#)
 
 
 def generate_example_datasets(config: dict) -> Tuple:
@@ -23,7 +23,7 @@ def generate_example_datasets(config: dict) -> Tuple:
     Returns:
         Tuple: (train_dataset, eval_dataset, test_dataset, config)
     """
-    input_seperated = config.get("inputs_seperated",False)
+    input_seperated = config.get("inputs_seperated", False)
     processor = StsbProcessor(
         config.get("spm_model_file", False),
         config.get("do_lower_case", False),
@@ -31,31 +31,23 @@ def generate_example_datasets(config: dict) -> Tuple:
     )
     seq_len = config.get("sequence_len", 512)
     (
-        train_file,
-        eval_file,
-        test_file,
+        model_files,
         config,
     ) = create_train_eval_input_files(config, processor)
 
-    train_dataset = file_based_input_fn_builder(
-        train_file,
-        seq_len,
-        is_training=True,
-        bsz=config.get("train_batch_size", 32),
-    )
-    eval_dataset = file_based_input_fn_builder(
-        eval_file,
-        seq_len,
-        is_training=False,
-        bsz=config.get("eval_batch_size", 32),
-    )
-    test_dataset = file_based_input_fn_builder(
-        test_file,
-        seq_len,
-        is_training=False,
-        bsz=config.get("test_batch_size", 32),
-    )
-    return train_dataset, eval_dataset, test_dataset, config
+
+    model_datasets = {}
+    for prefix, model_file in model_files.items():
+        is_training = False
+        if prefix == 'train':
+            is_training = True
+        model_datasets[prefix] = file_based_input_fn_builder(
+                model_file,
+                seq_len,
+                is_training=is_training,
+                bsz=config.get(f"{prefix}_batch_size", 32),
+            )
+    return model_datasets, config
 
 
 def create_train_eval_input_files(
@@ -77,23 +69,12 @@ def create_train_eval_input_files(
     task_name = config.get("task_name", "Experiment")
     data_dir = config.get("data_dir", "")
     normalize = config.get("normalize_scores", True)
-    model_step_names = ["train", "eval", "test"]
     if not cached_dir:
         cached_dir = config.get("output_dir", None)
-    train_file = os.path.join(cached_dir, task_name + "_train.tf_record")
-    train_examples = processor.get_train_examples(data_dir)
-    config["train_size"] = len(train_examples)
-    eval_file = os.path.join(cached_dir, task_name + "_eval.tf_record")
-    eval_examples = processor.get_eval_examples(data_dir)
-    config["eval_size"] = len(eval_examples)
-    test_file = os.path.join(cached_dir, task_name + "_test.tf_record")
-    test_examples = processor.get_test_examples(data_dir)
-    config["test_size"] = len(test_examples)
+    model_files = _generate_model_files(cached_dir, task_name)
+    model_examples, config = _generate_model_examples(processor, data_dir, config)
     tokenizer = _get_tokenizer(config)
-    for data_file, examples in zip(
-        (train_file, eval_file, test_file),
-        (train_examples, eval_examples, test_examples),
-    ):
+    for data_file, examples in zip(list(model_files.values()), model_examples):
         file_based_convert_examples_to_features(
             examples,
             config.get("sequence_len", 512),
@@ -101,8 +82,27 @@ def create_train_eval_input_files(
             data_file,
             task_name,
         )
-    return train_file, eval_file, test_file, config
+    return model_files, config
 
+def _generate_model_files(cached_dir:str, task_name:str):
+
+    model_files_suffix = ["_train", "_eval", "_test"]
+    extension = ".tf_record"
+    model_files = []
+    model_files = {}
+    for suffix in model_files_suffix:
+        model_file = os.path.join(cached_dir, task_name + suffix + extension)
+        model_files[suffix.strip('_')] = model_file
+    return model_files
+
+def _generate_model_examples(processor: DataProcessor, data_dir:str, config:dict):
+    train_examples = processor.get_train_examples(data_dir)
+    eval_examples = processor.get_eval_examples(data_dir)
+    test_examples = processor.get_test_examples(data_dir)
+    config['train_size'] = len(train_examples)
+    config['eval_size'] = len(eval_examples)
+    config['test_size'] = len(test_examples)
+    return [train_examples, eval_examples, test_examples], config
 
 def _get_tokenizer(config: dict) -> AutoTokenizer:
     """
