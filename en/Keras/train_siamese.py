@@ -10,7 +10,7 @@ import tensorflow.compat.v1.keras.backend as K
 from tensorflow.compat.v1 import keras
 
 from transformers import TFAutoModel
-from model import StsSiameseModel
+from models.sts import StsSiameseModel
 from preprocess import generate_example_datasets
 from optimizer.create_optimizers import (
     create_adam_decoupled_optimizer_with_warmup,
@@ -51,21 +51,18 @@ def train_model(config: dict):
 
         model_name_path = config.get("transformer_name_path", None)
         pretrained_model_name = config.get("pretrained_model_name", "Unknown")
+        use_avg_pooled_model = config.get("use_pretrain_avg_pooling", True)
+        use_dropout = config.get("use_dropout", True)
 
         model = StsSiameseModel(
-            model_name_path, seq_len, pretrained_model_name
+            model_name_path,
+            seq_len,
+            pretrained_model_name,
+            use_avg_pooled_model,
+            use_dropout,
         )
-        model(model.sample_input())
-        # model = create_siamese_model(
-        #    config.get("transformer_name_path", None),
-        #    seq_len,
-        #    use_dropout=config.get("use_dropout", True),
-        #    pretrained_model_name=config.get(
-        #        "pretrained_model_name", "Albert"
-        #    ),
-        # )
-        model.summary()
 
+        print_summary(model, seq_len)
         mse_loss = keras.losses.MeanSquaredError()
         optimizer = create_adam_decoupled_optimizer_with_warmup(config)
         metrics = [
@@ -96,147 +93,6 @@ def train_model(config: dict):
         run_test(model, test_dataset)
 
 
-def create_albert_cls(
-    model_name_path: str, seq_len: int, name: str = "Albert"
-) -> keras.Model:
-    """
-    Create pretrained model based on classification output.
-
-    Model uses pooled output from model which uses the classification
-    embedding to represent sentence embedding.
-
-    Args:
-        model_name_path (str): model_name_path
-        seq_len (int): seq_len
-        name (str): name
-
-    Returns:
-        keras.Model:
-    """
-
-    albert_inputs = [
-        keras.Input(shape=(seq_len,), dtype=tf.int32, name="input_word_ids"),
-        keras.Input(shape=(seq_len,), dtype=tf.int32, name="input_mask"),
-        keras.Input(shape=(seq_len,), dtype=tf.int32, name="segment_ids"),
-    ]
-    pretrained_layer = TFAutoModel.from_pretrained(model_name_path)
-    seq_output, pooled_output = pretrained_layer(albert_inputs)
-    model = keras.Model(albert_inputs, pooled_output, name="Albert")
-    return model
-
-
-def create_pretrained_pooled_model(
-    model_name_path: str, seq_len: int, name: str = "Albert"
-) -> keras.Model:
-    """
-    Create pretrained model based on pooled sequence embedding.
-
-    Model uses sequence embeddings which is masked using attention mask
-    input into the model and applying mean pooling to create sentence
-    embedding.
-
-    Args:
-        model_name_path (str): model_name_path
-        seq_len (int): seq_len
-        name (str): name
-
-    Returns:
-        keras.Model:
-    """
-
-    inputs = [
-        keras.Input(shape=(seq_len,), dtype=tf.int32, name="input_ids"),
-        keras.Input(shape=(seq_len,), dtype=tf.int32, name="attention_mask"),
-        keras.Input(shape=(seq_len,), dtype=tf.int32, name="token_type_ids"),
-    ]
-    pretrained_layer = TFAutoModel.from_pretrained(model_name_path)
-    seq_output, pooled_output = pretrained_layer(inputs)
-
-    avg_masked_pooling_layer = keras.layers.GlobalAveragePooling1D(
-        name="Avg_masked_pooling_layer"
-    )
-
-    seq_output, pooled_output = pretrained_layer(inputs)
-    attention_mask = inputs[1]
-    output = avg_masked_pooling_layer(inputs=seq_output, mask=attention_mask)
-
-    model = keras.Model(inputs, output, name=name)
-    return model
-
-
-def create_siamese_model(
-    model_name_path: str,
-    seq_len: int,
-    use_dropout: bool = True,
-    pretrained_model_name: str = "Albert",
-) -> keras.Model:
-    """
-    Create siamese model on defined Pretrained model.
-
-    Args:
-        model_name_path (str): model_name_path
-        seq_len (int): seq_len
-        use_dropout (bool): use_dropout
-        pretrained_model_name (str): pretrained_model_name
-
-    Returns:
-        keras.Model:
-    """
-
-    pretrained_model = create_pretrained_pooled_model(
-        model_name_path, seq_len, pretrained_model_name
-    )
-    cosine_layer = tf.keras.layers.Dot(
-        axes=1, normalize=True, name="cosine_layer",
-    )
-
-    inputs = {
-        "text_a": {
-            "input_word_ids": keras.Input(
-                shape=(seq_len,), dtype=tf.int32, name="input_word_ids_a"
-            ),
-            "input_mask": keras.Input(
-                shape=(seq_len,), dtype=tf.int32, name="input_mask_a"
-            ),
-            "segment_ids": keras.Input(
-                shape=(seq_len,), dtype=tf.int32, name="segment_ids_a"
-            ),
-        },
-        "text_b": {
-            "input_word_ids": keras.Input(
-                shape=(seq_len,), dtype=tf.int32, name="input_word_ids_b"
-            ),
-            "input_mask": keras.Input(
-                shape=(seq_len,), dtype=tf.int32, name="input_mask_b"
-            ),
-            "segment_ids": keras.Input(
-                shape=(seq_len,), dtype=tf.int32, name="segment_ids_b"
-            ),
-        },
-    }
-    inputs_text_a = [
-        inputs["text_a"]["input_word_ids"],
-        inputs["text_a"]["input_mask"],
-        inputs["text_a"]["segment_ids"],
-    ]
-    inputs_text_b = [
-        inputs["text_b"]["input_word_ids"],
-        inputs["text_b"]["input_mask"],
-        inputs["text_b"]["segment_ids"],
-    ]
-    siamese_1_output_pooled = pretrained_model(inputs_text_a)
-    siamese_2_output_pooled = pretrained_model(inputs_text_b)
-
-    if use_dropout:
-        dropout_layer = tf.keras.layers.Dropout(rate=0.1, name="dropout")
-        siamese_1_output_pooled = dropout_layer(siamese_1_output_pooled)
-        siamese_2_output_pooled = dropout_layer(siamese_2_output_pooled)
-
-    output = cosine_layer([siamese_1_output_pooled, siamese_2_output_pooled])
-    model = keras.Model(inputs, output)
-    return model
-
-
 def run_test(
     model: keras.Model, test_dataset: tf.data.Dataset,
 ):
@@ -263,7 +119,7 @@ def print_summary(model: keras.Model, sequence_len):
         model (keras.Model): model
         sequence_len:
     """
-    sample_input = model.get_sample_input(sequence_len)
+    sample_input = model.sample_input(sequence_len)
     model(sample_input)
     model.summary()
     keras.utils.plot_model(

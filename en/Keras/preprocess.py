@@ -3,13 +3,14 @@ from dataprocessor import DataProcessor, StsbProcessor
 from typing import Tuple
 from transformers import AutoTokenizer
 
-# from preprocessing.double_sent_preprocess import (
+#from preprocessing.double_sent_preprocess import (
 #    file_based_input_fn_builder,
 #    file_based_convert_examples_to_features,
-# )
+#)
+
 from preprocessing.individual_sent_preprocess import (
-    file_based_input_fn_builder,
-    file_based_convert_examples_to_features,
+   file_based_input_fn_builder,
+   file_based_convert_examples_to_features,
 )
 
 
@@ -22,10 +23,11 @@ def generate_example_datasets(config: dict) -> Tuple:
     Returns:
         Tuple: (train_dataset, eval_dataset, test_dataset, config)
     """
+    input_seperated = config.get("inputs_seperated",False)
     processor = StsbProcessor(
         config.get("spm_model_file", False),
         config.get("do_lower_case", False),
-        config.get("normalize_labels", True),
+        config.get("normalize_scores", True),
     )
     seq_len = config.get("sequence_len", 512)
     (
@@ -74,6 +76,7 @@ def create_train_eval_input_files(
     cached_dir = config.get("cached_dir", None)
     task_name = config.get("task_name", "Experiment")
     data_dir = config.get("data_dir", "")
+    normalize = config.get("normalize_scores", True)
     model_step_names = ["train", "eval", "test"]
     if not cached_dir:
         cached_dir = config.get("output_dir", None)

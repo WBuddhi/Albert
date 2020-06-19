@@ -13,6 +13,7 @@ pretrained_model_name: Albert
 spm_model_file: /home/buddhi/Albert/en/Keras/albert_module_hub_v2/assets/30k-clean.model
 do_train: true
 use_dropout: true
+use_pretrain_avg_pooling: false
 learning_rate: 2e-5
 do_eval: true
 do_test: true
@@ -25,6 +26,7 @@ test_batch_size: 8
 warmup_perc: 10
 save_checkpoints_steps: 1000
 iterations_per_loop: 1000
+normalize_scores: false
 #init_checkpoint: gs://model.ckpt-0.data-00000-of-00001
 # Google cloud compute params
 use_tpu: True

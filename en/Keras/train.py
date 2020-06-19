@@ -8,7 +8,7 @@ import tensorflow.compat.v1 as tf
 from tensorflow.compat.v1 import logging
 import tensorflow.compat.v1.keras.backend as K
 from tensorflow.compat.v1 import keras
-from model import StsbModel
+from models.sts import StsbModel
 from preprocess import generate_example_datasets
 from optimizer.create_optimizers import (
     create_adam_decoupled_optimizer_with_warmup,
@@ -46,7 +46,22 @@ def train_model(config: dict):
     ) = generate_example_datasets(config)
     # TPU init code
     with strategy.scope():
-        model = StsbModel(config.get("albert_hub_module_handle", None))
+
+        model_name_path = config.get("transformer_name_path", None)
+        pretrained_model_name = config.get("pretrained_model_name", "Unknown")
+        use_avg_pooled_model = config.get("use_pretrain_avg_pooling", True)
+        use_dropout = config.get("use_dropout", True)
+
+        model = StsbModel(
+            model_name_path,
+            seq_len,
+            pretrained_model_name,
+            use_avg_pooled_model,
+            use_dropout,
+        )
+        model(model.sample_input(sequence_len=seq_len))
+        model.summary()
+
         print_summary(model, seq_len)
         mse_loss = keras.losses.MeanSquaredError()
         optimizer = create_adam_decoupled_optimizer_with_warmup(config)
@@ -90,9 +105,16 @@ def run_test(
 
 
 def print_summary(model: keras.Model, sequence_len):
-    sample_input = model.get_sample_input(sequence_len)
+    sample_input = model.sample_input(sequence_len)
     model(sample_input)
     model.summary()
+    keras.utils.plot_model(
+        model,
+        to_file="./model.png",
+        show_shapes=True,
+        show_layer_names=True,
+        expand_nested=True,
+    )
 
 
 def pearson_correlation_metric_fn(

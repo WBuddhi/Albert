@@ -37,8 +37,8 @@ class InputFeatures(object):
     def __init__(
         self,
         input_ids: List[int],
-        input_mask: List[int],
-        segment_ids: List[int],
+        attention_mask: List[int],
+        token_type_ids: List[int],
         label_id: List[Any],
         guid: int = None,
         example_id: int = None,
@@ -49,16 +49,16 @@ class InputFeatures(object):
 
         Args:
             input_ids (List[int]): input_ids
-            input_mask (List[int]): input_mask
-            segment_ids (List[int]): segment_ids
+            attention_mask (List[int]): attention_mask
+            token_type_ids (List[int]): token_type_ids
             label_id (List[Any]): label_id
             guid (int): guid
             example_id (int): example_id
             is_real_example (bool): is_real_example
         """
         self.input_ids = input_ids
-        self.input_mask = input_mask
-        self.segment_ids = segment_ids
+        self.attention_mask = attention_mask
+        self.token_type_ids = token_type_ids
         self.label_id = label_id
         self.example_id = example_id
         self.guid = guid
@@ -71,11 +71,11 @@ class InputSepFeatures(object):
     def __init__(
         self,
         input_ids_a: List[int],
-        input_mask_a: List[int],
-        segment_ids_a: List[int],
+        attention_mask_a: List[int],
+        token_type_ids_a: List[int],
         input_ids_b: List[int],
-        input_mask_b: List[int],
-        segment_ids_b: List[int],
+        attention_mask_b: List[int],
+        token_type_ids_b: List[int],
         label_id: List[Any],
         guid: int = None,
         example_id: int = None,
@@ -86,22 +86,22 @@ class InputSepFeatures(object):
 
         Args:
             input_ids_a (List[int]): input_ids_a
-            input_mask_a (List[int]): input_mask_a
-            segment_ids_a (List[int]): segment_ids_a
+            attention_mask_a (List[int]): attention_mask_a
+            token_type_ids_a (List[int]): token_type_ids_a
             input_ids_b (List[int]): input_ids_b
-            input_mask_b (List[int]): input_mask_b
-            segment_ids_b (List[int]): segment_ids_b
+            attention_mask_b (List[int]): attention_mask_b
+            token_type_ids_b (List[int]): token_type_ids_b
             label_id (List[Any]): label_id
             guid (int): guid
             example_id (int): example_id
             is_real_example (bool): is_real_example
         """
         self.input_ids_a = input_ids_a
-        self.input_mask_a = input_mask_a
-        self.segment_ids_a = segment_ids_a
+        self.attention_mask_a = attention_mask_a
+        self.token_type_ids_a = token_type_ids_a
         self.input_ids_b = input_ids_b
-        self.input_mask_b = input_mask_b
-        self.segment_ids_b = segment_ids_b
+        self.attention_mask_b = attention_mask_b
+        self.token_type_ids_b = token_type_ids_b
         self.label_id = label_id
         self.example_id = example_id
         self.guid = guid
@@ -156,42 +156,42 @@ def create_albert_input(
         tokenizer (tokenization.FullTokenizer): tokenizer
         max_seq_length (int): max_seq_length
     Returns:
-        Tuple[List[int],List[int],List[int]]: input_ids, input_mask, segment_ids.
+        Tuple[List[int],List[int],List[int]]: input_ids, attention_mask, token_type_ids.
     """
     tokens = []
-    segment_ids = []
+    token_type_ids = []
     tokens.append("[CLS]")
-    segment_ids.append(0)
+    token_type_ids.append(0)
     for token in tokens_a:
         tokens.append(token)
-        segment_ids.append(0)
+        token_type_ids.append(0)
     tokens.append("[SEP]")
-    segment_ids.append(0)
+    token_type_ids.append(0)
 
     if tokens_b:
         for token in tokens_b:
             tokens.append(token)
-            segment_ids.append(1)
+            token_type_ids.append(1)
         tokens.append("[SEP]")
-        segment_ids.append(1)
+        token_type_ids.append(1)
 
     input_ids = tokenizer.convert_tokens_to_ids(tokens)
 
     # The mask has 1 for real tokens and 0 for padding tokens. Only real
     # tokens are attended to.
-    input_mask = [1] * len(input_ids)
+    attention_mask = [1] * len(input_ids)
 
     # Zero-pad up to the sequence length.
     while len(input_ids) < max_seq_length:
         input_ids.append(0)
-        input_mask.append(0)
-        segment_ids.append(0)
+        attention_mask.append(0)
+        token_type_ids.append(0)
 
     assert len(input_ids) == max_seq_length
-    assert len(input_mask) == max_seq_length
-    assert len(segment_ids) == max_seq_length
+    assert len(attention_mask) == max_seq_length
+    assert len(token_type_ids) == max_seq_length
 
-    return input_ids, input_mask, segment_ids
+    return input_ids, attention_mask, token_type_ids
 
 
 def create_int_feature(values: List[int]) -> tf.train.Feature:
