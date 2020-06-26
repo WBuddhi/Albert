@@ -103,6 +103,7 @@ class DataProcessor(object):
         Returns:
             str:
         """
+        print('here')
         outputs = inputs
         if remove_space:
             outputs = " ".join(inputs.strip().split())

@@ -9,8 +9,8 @@ tensorboard_logs: gs://buddhi_bert/model_logs/
 transformer_name_path: bert-base-cased
 pretrained_model_name: Bert
 # Training params
-preprocessor: individual_sent_preprocess
-vocab_file: /home/buddhi/Albert/en/Keras/bert_module_hub_v2/assets/vocab.txt
+model: StsSiameseModel
+preprocessor: preprocessing.individual_sent_preprocess
 do_train: true
 use_dropout: true
 use_pretrain_avg_pooling: true

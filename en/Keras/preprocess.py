@@ -2,7 +2,7 @@ import os
 from dataprocessor import DataProcessor, StsbProcessor
 from typing import Tuple
 from transformers import AutoTokenizer
-from importlib import import_module
+from utils import import_fn
 
 
 def generate_example_datasets(config: dict) -> Tuple:
@@ -15,15 +15,15 @@ def generate_example_datasets(config: dict) -> Tuple:
         Tuple: (train_dataset, eval_dataset, test_dataset, config)
     """
     input_seperated = config.get("inputs_seperated", False)
-    processor = StsbProcessor(
-        config.get("spm_model_file", False),
-        config.get("do_lower_case", False),
-        config.get("normalize_scores", True),
-    )
+    use_spm = config.get("spm_model_file", False)
+    do_lower_case = config.get("do_lower_case", False)
+    normalize_scores = config.get("normalize_scores", True)
     seq_len = config.get("sequence_len", 512)
-    module_name = config.get("preprocessor", "None")
+    module_name = config.get("preprocessor", None)
+
+    processor = StsbProcessor(use_spm,do_lower_case, normalize_scores)
     function_name = "file_based_input_fn_builder"
-    file_based_input_fn_builder = _import_fn(module_name, function_name)
+    file_based_input_fn_builder = import_fn(module_name, function_name)
 
     (model_files, config,) = create_train_eval_input_files(config, processor)
 
@@ -61,8 +61,10 @@ def create_train_eval_input_files(
     data_dir = config.get("data_dir", "")
     normalize = config.get("normalize_scores", True)
     module_name = config.get("preprocessor", "None")
+    seq_len = config.get("sequence_len", 512)
     function_name = "file_based_convert_examples_to_features"
-    file_based_convert_examples_to_features = _import_fn(
+
+    file_based_convert_examples_to_features = import_fn(
         module_name, function_name
     )
     if not cached_dir:
@@ -75,7 +77,7 @@ def create_train_eval_input_files(
     for data_file, examples in zip(list(model_files.values()), model_examples):
         file_based_convert_examples_to_features(
             examples,
-            config.get("sequence_len", 512),
+            seq_len,
             tokenizer,
             data_file,
             task_name,
@@ -121,5 +123,3 @@ def _get_tokenizer(config: dict) -> AutoTokenizer:
         config.get("transformer_name_path", None)
     )
 
-def _import_fn(module_name: str, function: str):
-    return getattr(import_module(f"preprocessing.{module_name}"), function)

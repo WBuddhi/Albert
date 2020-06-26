@@ -6,14 +6,14 @@ cached_dir: gs://buddhi_bert/sts-keras/cache
 pred_file: gs://buddhi_bert/sts-keras/results.csv
 tensorboard_logs: gs://buddhi_bert/model_logs/ 
 # Model hub url
-transformer_name_path: bert-base-cased
+transformer_name_path: bert-base-uncased
 pretrained_model_name: Bert
 # Training params
-preprocessor: double_sent_preprocess
-vocab_file: /home/buddhi/Albert/en/Keras/bert_module_hub_v2/assets/vocab.txt
+model: StsbModel
+preprocessor: preprocessing.double_sent_preprocess
 do_train: true
 use_dropout: true
-use_pretrain_avg_pooling: false
+use_pretrain_avg_pooling: true
 learning_rate: 5e-5
 do_eval: true
 do_test: true

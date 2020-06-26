@@ -9,7 +9,8 @@ tensorboard_logs: gs://buddhi_albert/model_logs/
 transformer_name_path: albert-base-v2
 pretrained_model_name: Albert
 # Training params
-preprocessor: individual_sent_preprocess
+model: StsSiameseModel
+preprocessor: preprocessing.individual_sent_preprocess
 do_train: true
 use_dropout: true
 use_pretrain_avg_pooling: true
