@@ -1,23 +1,22 @@
 # Local directories
-task_name: SemEval_siamese_bert
+task_name: SemEval_siamese_albert
 data_dir: /home/buddhi/Albert/en/Data/
-output_dir: gs://buddhi_bert/sts-keras/
-cached_dir: gs://buddhi_bert/sts-keras/cache
-pred_file: gs://buddhi_bert/sts-keras/results.csv
-tensorboard_logs: gs://buddhi_bert/model_logs/ 
+output_dir: gs://buddhi_albert/sts-keras/
+cached_dir: gs://buddhi_albert/sts-keras/cache
+pred_file: gs://buddhi_albert/sts-keras/results.csv
+tensorboard_logs: gs://buddhi_albert/model_logs/ 
 # Model hub url
-transformer_name_path: bert-base-cased
-pretrained_model_name: Bert
+transformer_name_path: albert-base-v2
+pretrained_model_name: Albert
 # Training params
 preprocessor: individual_sent_preprocess
-vocab_file: /home/buddhi/Albert/en/Keras/bert_module_hub_v2/assets/vocab.txt
 do_train: true
 use_dropout: true
 use_pretrain_avg_pooling: true
 learning_rate: 2e-5
 do_eval: true
-do_test: false
-do_lower_case: false
+do_test: true
+do_lower_case: true
 sequence_len: 250
 num_train_epochs: 10
 train_batch_size: 16

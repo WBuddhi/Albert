@@ -2,16 +2,7 @@ import os
 from dataprocessor import DataProcessor, StsbProcessor
 from typing import Tuple
 from transformers import AutoTokenizer
-
-from preprocessing.double_sent_preprocess import (
-    file_based_input_fn_builder,
-    file_based_convert_examples_to_features,
-)
-
-#from preprocessing.individual_sent_preprocess import (
-#  file_based_input_fn_builder,
-#  file_based_convert_examples_to_features,
-#)
+from importlib import import_module
 
 
 def generate_example_datasets(config: dict) -> Tuple:
@@ -30,23 +21,23 @@ def generate_example_datasets(config: dict) -> Tuple:
         config.get("normalize_scores", True),
     )
     seq_len = config.get("sequence_len", 512)
-    (
-        model_files,
-        config,
-    ) = create_train_eval_input_files(config, processor)
+    module_name = config.get("preprocessor", "None")
+    function_name = "file_based_input_fn_builder"
+    file_based_input_fn_builder = _import_fn(module_name, function_name)
 
+    (model_files, config,) = create_train_eval_input_files(config, processor)
 
     model_datasets = {}
     for prefix, model_file in model_files.items():
         is_training = False
-        if prefix == 'train':
+        if prefix == "train":
             is_training = True
         model_datasets[prefix] = file_based_input_fn_builder(
-                model_file,
-                seq_len,
-                is_training=is_training,
-                bsz=config.get(f"{prefix}_batch_size", 32),
-            )
+            model_file,
+            seq_len,
+            is_training=is_training,
+            bsz=config.get(f"{prefix}_batch_size", 32),
+        )
     return model_datasets, config
 
 
@@ -69,10 +60,17 @@ def create_train_eval_input_files(
     task_name = config.get("task_name", "Experiment")
     data_dir = config.get("data_dir", "")
     normalize = config.get("normalize_scores", True)
+    module_name = config.get("preprocessor", "None")
+    function_name = "file_based_convert_examples_to_features"
+    file_based_convert_examples_to_features = _import_fn(
+        module_name, function_name
+    )
     if not cached_dir:
         cached_dir = config.get("output_dir", None)
     model_files = _generate_model_files(cached_dir, task_name)
-    model_examples, config = _generate_model_examples(processor, data_dir, config)
+    model_examples, config = _generate_model_examples(
+        processor, data_dir, config
+    )
     tokenizer = _get_tokenizer(config)
     for data_file, examples in zip(list(model_files.values()), model_examples):
         file_based_convert_examples_to_features(
@@ -84,7 +82,8 @@ def create_train_eval_input_files(
         )
     return model_files, config
 
-def _generate_model_files(cached_dir:str, task_name:str):
+
+def _generate_model_files(cached_dir: str, task_name: str):
 
     model_files_suffix = ["_train", "_eval", "_test"]
     extension = ".tf_record"
@@ -92,17 +91,21 @@ def _generate_model_files(cached_dir:str, task_name:str):
     model_files = {}
     for suffix in model_files_suffix:
         model_file = os.path.join(cached_dir, task_name + suffix + extension)
-        model_files[suffix.strip('_')] = model_file
+        model_files[suffix.strip("_")] = model_file
     return model_files
 
-def _generate_model_examples(processor: DataProcessor, data_dir:str, config:dict):
+
+def _generate_model_examples(
+    processor: DataProcessor, data_dir: str, config: dict
+):
     train_examples = processor.get_train_examples(data_dir)
     eval_examples = processor.get_eval_examples(data_dir)
     test_examples = processor.get_test_examples(data_dir)
-    config['train_size'] = len(train_examples)
-    config['eval_size'] = len(eval_examples)
-    config['test_size'] = len(test_examples)
+    config["train_size"] = len(train_examples)
+    config["eval_size"] = len(eval_examples)
+    config["test_size"] = len(test_examples)
     return [train_examples, eval_examples, test_examples], config
+
 
 def _get_tokenizer(config: dict) -> AutoTokenizer:
     """
@@ -117,3 +120,6 @@ def _get_tokenizer(config: dict) -> AutoTokenizer:
     return AutoTokenizer.from_pretrained(
         config.get("transformer_name_path", None)
     )
+
+def _import_fn(module_name: str, function: str):
+    return getattr(import_module(f"preprocessing.{module_name}"), function)

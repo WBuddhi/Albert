@@ -2,13 +2,11 @@ from typing import Tuple
 import os
 import argparse
 from datetime import datetime
-import numpy as np
-import pandas as pd
 import tensorflow.compat.v1 as tf
 from tensorflow.compat.v1 import logging
-import tensorflow.compat.v1.keras.backend as K
 from tensorflow.compat.v1 import keras
 from models.sts import StsbModel
+from models.utils import run_test, print_summary, pearson_correlation_metric_fn
 from preprocess import generate_example_datasets
 from optimizer.create_optimizers import (
     create_adam_decoupled_optimizer_with_warmup,
@@ -38,10 +36,7 @@ def train_model(config: dict):
     else:
         strategy = tf.distribute.MirroredStrategy()
     seq_len = config.get("sequence_len", 512)
-    (
-        model_datasets,
-        config,
-    ) = generate_example_datasets(config)
+    (model_datasets, config,) = generate_example_datasets(config)
     # TPU init code
     with strategy.scope():
 
@@ -75,70 +70,21 @@ def train_model(config: dict):
         log_dir=log_dir, histogram_freq=0
     )
     model.fit(
-        x=model_datasets['train'],
+        x=model_datasets["train"],
         epochs=config.get("num_train_epochs", 5),
         steps_per_epoch=int(
             config.get("train_size", None)
             / config.get("train_batch_size", None)
         ),
-        validation_data=model_datasets['eval'],
-        validation_steps=config.get("eval_size", None),
+        validation_data=model_datasets["eval"],
         callbacks=[tensorboard_callback],
     )
     if config.get("do_test", False):
-        run_test(model, model_datasets['test'])
-
-
-def run_test(
-    model: keras.Model, test_dataset: tf.data.Dataset,
-):
-    predictions = model.predict(x=test_dataset)
-    output_data = [{"prediction": pred} for pred in predictions]
-    df = pd.DataFrame(output_data)
-    result_file = config.get("pred_file", "results.csv")
-    df.to_csv(result_file, index=False)
-    tf.logging.info(f"Results saved at: {result_file}")
-
-
-def print_summary(model: keras.Model, sequence_len):
-    sample_input = model.sample_input(sequence_len)
-    model(sample_input)
-    model.summary()
-    keras.utils.plot_model(
-        model,
-        to_file="./model.png",
-        show_shapes=True,
-        show_layer_names=True,
-        expand_nested=True,
-    )
-
-
-def pearson_correlation_metric_fn(
-    y_true: tf.Tensor, y_pred: tf.Tensor,
-) -> tf.Tensor:
-    """
-    Pearson correlation metric function.
-    https://github.com/WenYanger/Keras_Metrics
-
-    Args:
-        y_true (tf.Tensor): y_true
-        y_pred (tf.Tensor): y_pred
-
-    Returns:
-        tf.contrib.metrics: pearson correlation
-    """
-
-    x = y_true
-    y = y_pred
-    mx = K.mean(x, axis=0)
-    my = K.mean(y, axis=0)
-    xm, ym = x - mx, y - my
-    r_num = K.sum(xm * ym)
-    x_square_sum = K.sum(xm * xm)
-    y_square_sum = K.sum(ym * ym)
-    r_den = K.sqrt(x_square_sum * y_square_sum) + 1e-12
-    r = r_num / r_den
-    return K.mean(r)
+        run_test(
+            model,
+            model_datasets["test"],
+            config.get("pred_file", "results.csv"),
+        )
 
 
 if __name__ == "__main__":

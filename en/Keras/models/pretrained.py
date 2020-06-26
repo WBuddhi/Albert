@@ -97,10 +97,7 @@ class PretrainedModelCls(tf.keras.Model):
             tf.Tensor:
         """
 
-        _, cls_output = self.pretrained_layer(
-            inputs,
-            training=training,
-        )
+        _, cls_output = self.pretrained_layer(inputs, training=training,)
         if self.use_dropout and training:
             cls_output = self.dropout_layer(cls_output)
         return cls_output
