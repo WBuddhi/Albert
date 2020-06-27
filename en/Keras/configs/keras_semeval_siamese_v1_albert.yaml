@@ -1,0 +1,35 @@
+# Local directories
+task_name: SemEval_siamese_albert
+data_dir: /home/buddhi/Albert/en/Data/
+output_dir: gs://buddhi_albert/sts-keras/
+cached_dir: gs://buddhi_albert/sts-keras/cache
+pred_file: gs://buddhi_albert/sts-keras/results.csv
+tensorboard_logs: gs://buddhi_albert/model_logs/ 
+# Model hub url
+transformer_name_path: albert-base-v2
+pretrained_model_name: Albert
+# Training params
+model: StsSiameseModel
+preprocessor: preprocessing.individual_sent_preprocess
+do_train: true
+use_dropout: true
+use_pretrain_avg_pooling: true
+learning_rate: 2e-5
+do_eval: true
+do_test: true
+do_lower_case: true
+sequence_len: 250
+num_train_epochs: 10
+train_batch_size: 16
+eval_batch_size: 16
+test_batch_size: 8
+warmup_perc: 10
+save_checkpoints_steps: 1000
+iterations_per_loop: 1000
+normalize_scores: true
+#init_checkpoint: gs://model.ckpt-0.data-00000-of-00001
+# Google cloud compute params
+use_tpu: True
+optimizer: adamw
+tpu_name: tpu-v2
+gcp_project: buddhi-tpu
