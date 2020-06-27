@@ -125,7 +125,8 @@ def file_based_input_fn_builder(
     labeltype = tf.float32
 
     name_to_features = {
-        "input_word_ids_a": tf.FixedLenFeature(
+        "input_ids_a": tf.FixedLenFeature([seq_length * multiple], tf.int64),
+        "attention_mask_a": tf.FixedLenFeature(
             [seq_length * multiple], tf.int64
         ),
         "attention_mask_a": tf.FixedLenFeature([seq_length * multiple], tf.int64),
@@ -144,6 +145,9 @@ def file_based_input_fn_builder(
         """
         Decodes a record to a TensorFlow example.
 
+        tf.Example only supports tf.int64, but the TPU only
+          supports tf.int32.
+        So cast all int64 to int32.
         Args:
             record (tf.data.TFRecordDataset): record
             name_to_features (dict): name_to_features
@@ -153,9 +157,6 @@ def file_based_input_fn_builder(
         """
         example = tf.parse_single_example(record, name_to_features)
 
-        # tf.Example only supports tf.int64, but the TPU only
-        #   supports tf.int32.
-        # So cast all int64 to int32.
         for name in list(example.keys()):
             t = example[name]
             if t.dtype == tf.int64:
@@ -178,12 +179,15 @@ def file_based_input_fn_builder(
         return (inputs, example["label_id"])
 
     def input_fn():
-        """The actual input function."""
+        """
+        The actual input function.
+
+        For training, we want a lot of parallel reading and shuffling.
+        For eval, we want no shuffling and parallel reading doesn't matter.
+        """
 
         batch_size = bsz
 
-        # For training, we want a lot of parallel reading and shuffling.
-        # For eval, we want no shuffling and parallel reading doesn't matter.
         dataset = tf.data.TFRecordDataset(input_file)
         if is_training:
             dataset = dataset.repeat()

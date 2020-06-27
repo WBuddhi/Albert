@@ -1,18 +1,19 @@
 # Local directories
-task_name: SemEval
+task_name: SemEval_siamese_bert
 data_dir: /home/buddhi/Albert/en/Data/
 output_dir: gs://buddhi_bert/sts-keras/
 cached_dir: gs://buddhi_bert/sts-keras/cache
 pred_file: gs://buddhi_bert/sts-keras/results.csv
 tensorboard_logs: gs://buddhi_bert/model_logs/ 
 # Model hub url
-model_hub_module_handle: gs://buddhi_bert/sts-keras/bert_model_hub_v2
 transformer_name_path: bert-base-cased
 pretrained_model_name: Bert
 # Training params
-vocab_file: /home/buddhi/Albert/en/Keras/bert_module_hub_v2/assets/vocab.txt
+model: StsSiameseModel
+preprocessor: preprocessing.individual_sent_preprocess
 do_train: true
 use_dropout: true
+use_pretrain_avg_pooling: true
 learning_rate: 2e-5
 do_eval: true
 do_test: false
@@ -25,6 +26,7 @@ test_batch_size: 8
 warmup_perc: 10
 save_checkpoints_steps: 1000
 iterations_per_loop: 1000
+normalize_scores: true
 #init_checkpoint: gs://model.ckpt-0.data-00000-of-00001
 # Google cloud compute params
 use_tpu: True

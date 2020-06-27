@@ -2,8 +2,8 @@
 Methods in this file pre-processing the input to generate an output
 of the following format:
     input_ids: [sent_a,sent_b]
-    input_masks: [sent_a, sent_b]
-    segment_ids: [sent_a, sent_b]
+    attention_masks: [sent_a, sent_b]
+    token_type_ids: [sent_a, sent_b]
 
 This is the default Albert input configuration, sent_b can be None.
 """
@@ -38,8 +38,8 @@ def convert_single_example(
     if isinstance(example, PaddingInputExample):
         return InputFeatures(
             input_ids=[0] * max_seq_length,
-            input_mask=[0] * max_seq_length,
-            segment_ids=[0] * max_seq_length,
+            attention_mask=[0] * max_seq_length,
+            token_type_ids=[0] * max_seq_length,
             label_id=0,
             is_real_example=False,
         )
@@ -57,7 +57,7 @@ def convert_single_example(
         if len(tokens_a) > max_seq_length - 2:
             tokens_a = tokens_a[0 : (max_seq_length - 2)]
 
-    input_ids, input_mask, segment_ids = create_albert_input(
+    input_ids, attention_mask, token_type_ids = create_albert_input(
         tokens_a=tokens_a,
         tokens_b=tokens_b,
         tokenizer=tokenizer,
@@ -78,17 +78,17 @@ def convert_single_example(
             "input_ids: %s" % " ".join([str(x) for x in input_ids])
         )
         tf.logging.debug(
-            "input_mask: %s" % " ".join([str(x) for x in input_mask])
+            "attention_mask: %s" % " ".join([str(x) for x in attention_mask])
         )
         tf.logging.debug(
-            "segment_ids: %s" % " ".join([str(x) for x in segment_ids])
+            "token_type_ids: %s" % " ".join([str(x) for x in token_type_ids])
         )
         tf.logging.debug("label: %s (id = %d)" % (example.label, label_id))
 
     feature = InputFeatures(
         input_ids=input_ids,
-        input_mask=input_mask,
-        segment_ids=segment_ids,
+        attention_mask=attention_mask,
+        token_type_ids=token_type_ids,
         label_id=label_id,
         is_real_example=True,
     )
@@ -120,11 +120,13 @@ def file_based_input_fn_builder(
     labeltype = tf.float32
 
     name_to_features = {
-        "input_word_ids": tf.FixedLenFeature(
+        "input_ids": tf.FixedLenFeature([seq_length * multiple], tf.int64),
+        "attention_mask": tf.FixedLenFeature(
             [seq_length * multiple], tf.int64
         ),
-        "input_mask": tf.FixedLenFeature([seq_length * multiple], tf.int64),
-        "segment_ids": tf.FixedLenFeature([seq_length * multiple], tf.int64),
+        "token_type_ids": tf.FixedLenFeature(
+            [seq_length * multiple], tf.int64
+        ),
         "label_ids": tf.FixedLenFeature([], labeltype),
     }
 
@@ -151,8 +153,13 @@ def file_based_input_fn_builder(
             if t.dtype == tf.int64:
                 t = tf.cast(t, tf.int32, name=name)
             example[name] = t
+        inputs = {
+            "input_ids": example["input_ids"],
+            "attention_mask": example["attention_mask"],
+            "token_type_ids": example["token_type_ids"],
+        }
 
-        return (example, example["label_ids"])
+        return (inputs, example["label_ids"])
 
     def input_fn():
         """The actual input function."""
@@ -176,7 +183,6 @@ def file_based_input_fn_builder(
 
 def file_based_convert_examples_to_features(
     examples: InputExample,
-    label_list: List,
     max_seq_length: int,
     tokenizer: tokenization.FullTokenizer,
     output_file: str,
@@ -194,35 +200,32 @@ def file_based_convert_examples_to_features(
         task_name (str): task_name
     """
 
-    if not tf.io.gfile.exists(output_file):
-        writer = tf.python_io.TFRecordWriter(output_file)
+    writer = tf.python_io.TFRecordWriter(output_file)
 
-        for (ex_index, example) in enumerate(examples):
-            if ex_index % 10000 == 0:
-                tf.logging.info(
-                    "Writing example %d of %d" % (ex_index, len(examples))
-                )
-
-            feature = convert_single_example(
-                ex_index, example, max_seq_length, tokenizer, task_name
+    for (ex_index, example) in enumerate(examples):
+        if ex_index % 10000 == 0:
+            tf.logging.info(
+                "Writing example %d of %d" % (ex_index, len(examples))
             )
 
-            features = collections.OrderedDict()
-            features["input_word_ids"] = create_int_feature(feature.input_ids)
-            features["input_mask"] = create_int_feature(feature.input_mask)
-            features["segment_ids"] = create_int_feature(feature.segment_ids)
-            features["label_ids"] = create_float_feature([feature.label_id])
-            features["is_real_example"] = create_int_feature(
-                [int(feature.is_real_example)]
-            )
+        feature = convert_single_example(
+            ex_index, example, max_seq_length, tokenizer, task_name
+        )
 
-            tf_example = tf.train.Example(
-                features=tf.train.Features(feature=features)
-            )
-            writer.write(tf_example.SerializeToString())
-        writer.close()
-    else:
-        tf.logging.info(f"Output file already exists: {output_file}")
+        features = collections.OrderedDict()
+        features["input_ids"] = create_int_feature(feature.input_ids)
+        features["attention_mask"] = create_int_feature(feature.attention_mask)
+        features["token_type_ids"] = create_int_feature(feature.token_type_ids)
+        features["label_ids"] = create_float_feature([feature.label_id])
+        features["is_real_example"] = create_int_feature(
+            [int(feature.is_real_example)]
+        )
+
+        tf_example = tf.train.Example(
+            features=tf.train.Features(feature=features)
+        )
+        writer.write(tf_example.SerializeToString())
+    writer.close()
 
 
 def _truncate_seq_pair(

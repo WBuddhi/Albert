@@ -34,7 +34,7 @@ class DataProcessor(object):
         """
         raise NotImplementedError()
 
-    def get_test(self, data_dir: str):
+    def get_eval_examples(self, data_dir: str):
         """
         Gets a collection of Examples for the test set.
 
@@ -103,6 +103,7 @@ class DataProcessor(object):
         Returns:
             str:
         """
+        print('here')
         outputs = inputs
         if remove_space:
             outputs = " ".join(inputs.strip().split())
