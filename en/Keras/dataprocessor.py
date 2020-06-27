@@ -19,6 +19,7 @@ class DataProcessor(object):
         Args:
             use_spm (bool): use_spm
             do_lower_case (bool): do_lower_case
+            normalize (bool): normalize
         """
         super(DataProcessor, self).__init__()
         self.normalize = normalize
@@ -103,7 +104,6 @@ class DataProcessor(object):
         Returns:
             str:
         """
-        print('here')
         outputs = inputs
         if remove_space:
             outputs = " ".join(inputs.strip().split())
@@ -237,7 +237,7 @@ class StsbProcessor(DataProcessor):
             if set_type != "test":
                 label = float(line[-1])
                 if self.normalize:
-                    label = (float(line[-1]) - 0.0) / (5.0)
+                    label = float(line[-1]) / (5.0)
             else:
                 label = 0
             examples.append(

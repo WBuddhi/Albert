@@ -125,17 +125,24 @@ def file_based_input_fn_builder(
     labeltype = tf.float32
 
     name_to_features = {
-        "input_ids_a": tf.FixedLenFeature([seq_length * multiple], tf.int64),
+        "input_word_ids_a": tf.FixedLenFeature(
+            [seq_length * multiple], tf.int64
+        ),
         "attention_mask_a": tf.FixedLenFeature(
             [seq_length * multiple], tf.int64
         ),
-        "attention_mask_a": tf.FixedLenFeature([seq_length * multiple], tf.int64),
-        "token_type_ids_a": tf.FixedLenFeature([seq_length * multiple], tf.int64),
+        "token_type_ids_a": tf.FixedLenFeature(
+            [seq_length * multiple], tf.int64
+        ),
         "input_word_ids_b": tf.FixedLenFeature(
             [seq_length * multiple], tf.int64
         ),
-        "attention_mask_b": tf.FixedLenFeature([seq_length * multiple], tf.int64),
-        "token_type_ids_b": tf.FixedLenFeature([seq_length * multiple], tf.int64),
+        "attention_mask_b": tf.FixedLenFeature(
+            [seq_length * multiple], tf.int64
+        ),
+        "token_type_ids_b": tf.FixedLenFeature(
+            [seq_length * multiple], tf.int64
+        ),
         "label_id": tf.FixedLenFeature([], labeltype),
     }
 
@@ -148,6 +155,7 @@ def file_based_input_fn_builder(
         tf.Example only supports tf.int64, but the TPU only
           supports tf.int32.
         So cast all int64 to int32.
+
         Args:
             record (tf.data.TFRecordDataset): record
             name_to_features (dict): name_to_features
@@ -234,12 +242,24 @@ def file_based_convert_examples_to_features(
         )
 
         features = collections.OrderedDict()
-        features["input_word_ids_a"] = create_int_feature(feature.input_word_ids_a)
-        features["attention_mask_a"] = create_int_feature(feature.attention_mask_a)
-        features["token_type_ids_a"] = create_int_feature(feature.token_type_ids_a)
-        features["input_word_ids_b"] = create_int_feature(feature.input_word_ids_b)
-        features["attention_mask_b"] = create_int_feature(feature.attention_mask_b)
-        features["token_type_ids_b"] = create_int_feature(feature.token_type_ids_b)
+        features["input_word_ids_a"] = create_int_feature(
+            feature.input_word_ids_a
+        )
+        features["attention_mask_a"] = create_int_feature(
+            feature.attention_mask_a
+        )
+        features["token_type_ids_a"] = create_int_feature(
+            feature.token_type_ids_a
+        )
+        features["input_word_ids_b"] = create_int_feature(
+            feature.input_word_ids_b
+        )
+        features["attention_mask_b"] = create_int_feature(
+            feature.attention_mask_b
+        )
+        features["token_type_ids_b"] = create_int_feature(
+            feature.token_type_ids_b
+        )
         features["label_id"] = create_float_feature([feature.label_id])
         features["is_real_example"] = create_int_feature(
             [int(feature.is_real_example)]

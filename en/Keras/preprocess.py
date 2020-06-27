@@ -11,6 +11,7 @@ def generate_example_datasets(config: dict) -> Tuple:
 
     Args:
         config (dict): config
+
     Returns:
         Tuple: (train_dataset, eval_dataset, test_dataset, config)
     """
@@ -21,11 +22,11 @@ def generate_example_datasets(config: dict) -> Tuple:
     seq_len = config.get("sequence_len", 512)
     module_name = config.get("preprocessor", None)
 
-    processor = StsbProcessor(use_spm,do_lower_case, normalize_scores)
+    processor = StsbProcessor(use_spm, do_lower_case, normalize_scores)
     function_name = "file_based_input_fn_builder"
     file_based_input_fn_builder = import_fn(module_name, function_name)
 
-    (model_files, config,) = create_train_eval_input_files(config, processor)
+    (model_files, config) = create_train_eval_input_files(config, processor)
 
     model_datasets = {}
     for prefix, model_file in model_files.items():
@@ -76,11 +77,7 @@ def create_train_eval_input_files(
     tokenizer = _get_tokenizer(config)
     for data_file, examples in zip(list(model_files.values()), model_examples):
         file_based_convert_examples_to_features(
-            examples,
-            seq_len,
-            tokenizer,
-            data_file,
-            task_name,
+            examples, seq_len, tokenizer, data_file, task_name,
         )
     return model_files, config
 
@@ -122,4 +119,3 @@ def _get_tokenizer(config: dict) -> AutoTokenizer:
     return AutoTokenizer.from_pretrained(
         config.get("transformer_name_path", None)
     )
-

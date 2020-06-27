@@ -7,7 +7,7 @@ from tensorflow.compat.v1 import logging
 from tensorflow.compat.v1 import keras
 
 from transformers import TFAutoModel
-#from models.sts import StsSiameseModel
+
 from models.utils import run_test, print_summary, pearson_correlation_metric_fn
 from preprocess import generate_example_datasets
 from optimizer.create_optimizers import (
@@ -16,7 +16,15 @@ from optimizer.create_optimizers import (
 from utils import read_yaml_config, import_fn
 from scipy.stats import pearsonr
 
-def get_training_strategy(use_tpu:bool, tpu_name:str):
+
+def get_training_strategy(use_tpu: bool, tpu_name: str):
+    """
+    Get training strategy.
+
+    Args:
+        use_tpu (bool): use_tpu
+        tpu_name (str): tpu_name
+    """
 
     if use_tpu:
         resolver = tf.distribute.cluster_resolver.TPUClusterResolver(
@@ -25,8 +33,8 @@ def get_training_strategy(use_tpu:bool, tpu_name:str):
         tf.config.experimental_connect_to_cluster(resolver)
         tf.tpu.experimental.initialize_tpu_system(resolver)
         return tf.distribute.experimental.TPUStrategy(resolver)
-    else:
-        return tf.distribute.MirroredStrategy()
+    return tf.distribute.MirroredStrategy()
+
 
 def train_model(config: dict):
     """
@@ -57,11 +65,10 @@ def train_model(config: dict):
     do_training = config.get("do_train", True)
     do_test = config.get("do_test", False)
 
-
     strategy = get_training_strategy(use_tpu, tpu_name)
     model_class = import_fn("models.sts", model_class)
 
-    (model_datasets, config,) = generate_example_datasets(config)
+    (model_datasets, config) = generate_example_datasets(config)
     training_size = config.get("train_size", None)
     train_batch_size = config.get("train_batch_size", None)
 
@@ -91,7 +98,7 @@ def train_model(config: dict):
         model.fit(
             x=model_datasets["train"],
             epochs=num_of_epochs,
-            steps_per_epoch=int(training_size/train_batch_size),
+            steps_per_epoch=int(training_size / train_batch_size),
             validation_data=model_datasets["eval"],
             callbacks=[tensorboard_callback],
         )

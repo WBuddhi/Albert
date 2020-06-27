@@ -1,7 +1,7 @@
 """
 Methods in this file pre-processing the input to generate an output
 of the following format:
-    input_ids: [sent_a,sent_b]
+    input_word_ids: [sent_a,sent_b]
     attention_masks: [sent_a, sent_b]
     token_type_ids: [sent_a, sent_b]
 
@@ -24,7 +24,12 @@ def convert_single_example(
 ) -> InputFeatures:
     """
     Converts a single `InputExample` into a single `InputFeatures`.
-    
+
+    Modifies `tokens_a` and `tokens_b` in place so that the total
+    length is less than the specified length.
+        Single sentence: Account for [CLS], [SEP], [SEP] with "- 3"
+        Double sentence: Account for [CLS] and [SEP] with "- 2"
+
     Args:
         ex_index (int): ex_index
         example (InputExample): example
@@ -37,9 +42,9 @@ def convert_single_example(
     """
     if isinstance(example, PaddingInputExample):
         return InputFeatures(
-            input_ids=[0] * max_seq_length,
-            attention_mask=[0] * max_seq_length,
-            token_type_ids=[0] * max_seq_length,
+            input_word_ids=[0 for i in range(max_seq_length)],
+            attention_mask=[0 for i in range(max_seq_length)],
+            token_type_ids=[0 for i in range(max_seq_length)],
             label_id=0,
             is_real_example=False,
         )
@@ -48,16 +53,11 @@ def convert_single_example(
     tokens_b = None
     if example.text_b:
         tokens_b = tokenizer.tokenize(example.text_b)
-        # Modifies `tokens_a` and `tokens_b` in place so that the total
-        # length is less than the specified length.
-        # Account for [CLS], [SEP], [SEP] with "- 3"
         _truncate_seq_pair(tokens_a, tokens_b, max_seq_length - 3)
-    else:
-        # Account for [CLS] and [SEP] with "- 2"
-        if len(tokens_a) > max_seq_length - 2:
-            tokens_a = tokens_a[0 : (max_seq_length - 2)]
+    elif len(tokens_a) > max_seq_length - 2:
+        tokens_a = tokens_a[0 : (max_seq_length - 2)]
 
-    input_ids, attention_mask, token_type_ids = create_albert_input(
+    input_word_ids, attention_mask, token_type_ids = create_albert_input(
         tokens_a=tokens_a,
         tokens_b=tokens_b,
         tokenizer=tokenizer,
@@ -75,7 +75,7 @@ def convert_single_example(
             % " ".join([tokenization.printable_text(x) for x in tokens])
         )
         tf.logging.debug(
-            "input_ids: %s" % " ".join([str(x) for x in input_ids])
+            "input_word_ids: %s" % " ".join([str(x) for x in input_word_ids])
         )
         tf.logging.debug(
             "attention_mask: %s" % " ".join([str(x) for x in attention_mask])
@@ -86,7 +86,7 @@ def convert_single_example(
         tf.logging.debug("label: %s (id = %d)" % (example.label, label_id))
 
     feature = InputFeatures(
-        input_ids=input_ids,
+        input_word_ids=input_word_ids,
         attention_mask=attention_mask,
         token_type_ids=token_type_ids,
         label_id=label_id,
@@ -120,7 +120,9 @@ def file_based_input_fn_builder(
     labeltype = tf.float32
 
     name_to_features = {
-        "input_ids": tf.FixedLenFeature([seq_length * multiple], tf.int64),
+        "input_word_ids": tf.FixedLenFeature(
+            [seq_length * multiple], tf.int64
+        ),
         "attention_mask": tf.FixedLenFeature(
             [seq_length * multiple], tf.int64
         ),
@@ -136,6 +138,10 @@ def file_based_input_fn_builder(
         """
         Decodes a record to a TensorFlow example.
 
+        tf.Example only supports tf.int64, but the TPU only
+          supports tf.int32.
+        So cast all int64 to int32.
+
         Args:
             record (tf.data.TFRecordDataset): record
             name_to_features (dict): name_to_features
@@ -145,16 +151,13 @@ def file_based_input_fn_builder(
         """
         example = tf.parse_single_example(record, name_to_features)
 
-        # tf.Example only supports tf.int64, but the TPU only
-        #   supports tf.int32.
-        # So cast all int64 to int32.
         for name in list(example.keys()):
             t = example[name]
             if t.dtype == tf.int64:
                 t = tf.cast(t, tf.int32, name=name)
             example[name] = t
         inputs = {
-            "input_ids": example["input_ids"],
+            "input_word_ids": example["input_word_ids"],
             "attention_mask": example["attention_mask"],
             "token_type_ids": example["token_type_ids"],
         }
@@ -162,12 +165,15 @@ def file_based_input_fn_builder(
         return (inputs, example["label_ids"])
 
     def input_fn():
-        """The actual input function."""
+        """
+        The actual input function.
+
+        For training, we want a lot of parallel reading and shuffling.
+        For eval, we want no shuffling and parallel reading doesn't matter.
+        """
 
         batch_size = bsz
 
-        # For training, we want a lot of parallel reading and shuffling.
-        # For eval, we want no shuffling and parallel reading doesn't matter.
         dataset = tf.data.TFRecordDataset(input_file)
         if is_training:
             dataset = dataset.repeat()
@@ -193,7 +199,6 @@ def file_based_convert_examples_to_features(
 
     Args:
         examples (InputExample): examples
-        label_list (List): label_list
         max_seq_length (int): max_seq_length
         tokenizer (tokenization.FullTokenizer): tokenizer
         output_file (str): output_file
@@ -213,7 +218,7 @@ def file_based_convert_examples_to_features(
         )
 
         features = collections.OrderedDict()
-        features["input_ids"] = create_int_feature(feature.input_ids)
+        features["input_word_ids"] = create_int_feature(feature.input_word_ids)
         features["attention_mask"] = create_int_feature(feature.attention_mask)
         features["token_type_ids"] = create_int_feature(feature.token_type_ids)
         features["label_ids"] = create_float_feature([feature.label_id])
@@ -238,6 +243,7 @@ def _truncate_seq_pair(
     one token at a time. This makes more sense than truncating an equal percent
     of tokens from each, since if one sequence is very short then each token
     that's truncated likely contains more information than a longer sequence.
+
     Args:
         tokens_a (List[int]): tokens_a
         tokens_b (List[int]): tokens_b
