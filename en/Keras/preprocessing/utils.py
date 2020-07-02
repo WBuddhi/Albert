@@ -1,6 +1,5 @@
 import tensorflow.compat.v1 as tf
 import collections
-import tokenization
 from typing import Any, List, Callable, Tuple
 
 
@@ -36,7 +35,7 @@ class InputFeatures(object):
 
     def __init__(
         self,
-        input_word_ids: List[int],
+        input_ids: List[int],
         attention_mask: List[int],
         token_type_ids: List[int],
         label_id: List[Any],
@@ -48,7 +47,7 @@ class InputFeatures(object):
         Create Input Feature
 
         Args:
-            input_word_ids (List[int]): input_word_ids
+            input_ids (List[int]): input_ids
             attention_mask (List[int]): attention_mask
             token_type_ids (List[int]): token_type_ids
             label_id (List[Any]): label_id
@@ -56,7 +55,7 @@ class InputFeatures(object):
             example_id (int): example_id
             is_real_example (bool): is_real_example
         """
-        self.input_word_ids = input_word_ids
+        self.input_ids = input_ids
         self.attention_mask = attention_mask
         self.token_type_ids = token_type_ids
         self.label_id = label_id
@@ -70,10 +69,10 @@ class InputSepFeatures(object):
 
     def __init__(
         self,
-        input_word_ids_a: List[int],
+        input_ids_a: List[int],
         attention_mask_a: List[int],
         token_type_ids_a: List[int],
-        input_word_ids_b: List[int],
+        input_ids_b: List[int],
         attention_mask_b: List[int],
         token_type_ids_b: List[int],
         label_id: List[Any],
@@ -85,10 +84,10 @@ class InputSepFeatures(object):
         Create Input Feature for Sentences separately.
 
         Args:
-            input_word_ids_a (List[int]): input_word_ids_a
+            input_ids_a (List[int]): input_ids_a
             attention_mask_a (List[int]): attention_mask_a
             token_type_ids_a (List[int]): token_type_ids_a
-            input_word_ids_b (List[int]): input_word_ids_b
+            input_ids_b (List[int]): input_ids_b
             attention_mask_b (List[int]): attention_mask_b
             token_type_ids_b (List[int]): token_type_ids_b
             label_id (List[Any]): label_id
@@ -96,10 +95,10 @@ class InputSepFeatures(object):
             example_id (int): example_id
             is_real_example (bool): is_real_example
         """
-        self.input_word_ids_a = input_word_ids_a
+        self.input_ids_a = input_ids_a
         self.attention_mask_a = attention_mask_a
         self.token_type_ids_a = token_type_ids_a
-        self.input_word_ids_b = input_word_ids_b
+        self.input_ids_b = input_ids_b
         self.attention_mask_b = attention_mask_b
         self.token_type_ids_b = token_type_ids_b
         self.label_id = label_id
@@ -124,7 +123,7 @@ class PaddingInputExample(object):
 
 def create_albert_input(
     tokens_a: List,
-    tokenizer: tokenization.FullTokenizer,
+    tokenizer: object,
     max_seq_length: int,
     tokens_b: List = None,
 ) -> Tuple[List[int], List[int], List[int]]:
@@ -153,10 +152,10 @@ def create_albert_input(
     Args:
         tokens_a (List): tokens_a
         tokens_b (List): tokens_b
-        tokenizer (tokenization.FullTokenizer): tokenizer
+        tokenizer (object): tokenizer
         max_seq_length (int): max_seq_length
     Returns:
-        Tuple[List[int],List[int],List[int]]: input_word_ids, attention_mask, token_type_ids.
+        Tuple[List[int],List[int],List[int]]: input_ids, attention_mask, token_type_ids.
     """
     tokens = []
     token_type_ids = []
@@ -175,23 +174,23 @@ def create_albert_input(
         tokens.append("[SEP]")
         token_type_ids.append(1)
 
-    input_word_ids = tokenizer.convert_tokens_to_ids(tokens)
+    input_ids = tokenizer.convert_tokens_to_ids(tokens)
 
     # The mask has 1 for real tokens and 0 for padding tokens. Only real
     # tokens are attended to.
-    attention_mask = [1] * len(input_word_ids)
+    attention_mask = [1] * len(input_ids)
 
     # Zero-pad up to the sequence length.
-    while len(input_word_ids) < max_seq_length:
-        input_word_ids.append(0)
+    while len(input_ids) < max_seq_length:
+        input_ids.append(0)
         attention_mask.append(0)
         token_type_ids.append(0)
 
-    assert len(input_word_ids) == max_seq_length
+    assert len(input_ids) == max_seq_length
     assert len(attention_mask) == max_seq_length
     assert len(token_type_ids) == max_seq_length
 
-    return input_word_ids, attention_mask, token_type_ids
+    return input_ids, attention_mask, token_type_ids
 
 
 def create_int_feature(values: List[int]) -> tf.train.Feature:
