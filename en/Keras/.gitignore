@@ -2,3 +2,4 @@
 *.pyc
 /__pycache__/
 *.swp
+/results_20200709-114423.csv
