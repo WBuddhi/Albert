@@ -64,6 +64,9 @@ def train_model(config: dict):
 
     do_training = config.get("do_train", True)
     do_test = config.get("do_test", False)
+    result_file_name = config.get("result_file_name", "results_") + datetime.now().strftime(
+        "%Y%m%d-%H%M%S"
+    ) + ".csv"
 
     strategy = get_training_strategy(use_tpu, tpu_name)
     model_class = import_fn("models.sts", model_class)
@@ -103,7 +106,7 @@ def train_model(config: dict):
             callbacks=[tensorboard_callback],
         )
     if do_test:
-        run_test(model, model_datasets["test"])
+        run_test(model, model_datasets["test"], result_file_name)
 
 
 if __name__ == "__main__":
