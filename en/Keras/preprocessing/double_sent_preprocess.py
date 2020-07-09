@@ -69,10 +69,7 @@ def convert_single_example(
     if ex_index < 5:
         tf.logging.debug("*** Example ***")
         tf.logging.debug("guid: %s" % (example.guid))
-        tf.logging.debug(
-            "tokens: %s"
-            % " ".join(tokens)
-        )
+        tf.logging.debug("tokens: %s" % " ".join(tokens))
         tf.logging.debug(
             "input_ids: %s" % " ".join([str(x) for x in input_ids])
         )
@@ -92,6 +89,7 @@ def convert_single_example(
         is_real_example=True,
     )
     return feature
+
 
 def file_based_input_fn_builder(
     input_file: str,
@@ -118,9 +116,7 @@ def file_based_input_fn_builder(
     labeltype = tf.float32
 
     name_to_features = {
-        "input_ids": tf.FixedLenFeature(
-            [seq_length * multiple], tf.int64
-        ),
+        "input_ids": tf.FixedLenFeature([seq_length * multiple], tf.int64),
         "attention_mask": tf.FixedLenFeature(
             [seq_length * multiple], tf.int64
         ),
@@ -183,6 +179,7 @@ def file_based_input_fn_builder(
         return dataset
 
     return input_fn()
+
 
 def file_based_convert_examples_to_features(
     examples: InputExample,

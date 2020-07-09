@@ -57,10 +57,7 @@ def convert_single_example(
         tf.logging.debug("*** Example ***")
         tf.logging.debug("**Sentence a**")
         tf.logging.debug("guid: %s" % (example.guid))
-        tf.logging.debug(
-            "tokens: %s"
-            % " ".join(tokens_a)
-        )
+        tf.logging.debug("tokens: %s" % " ".join(tokens_a))
         tf.logging.debug(
             "input_ids: %s" % " ".join([str(x) for x in input_ids_a])
         )
@@ -71,10 +68,7 @@ def convert_single_example(
             "token_type_ids: %s" % " ".join([str(x) for x in token_type_ids_a])
         )
         tf.logging.debug("**Sentence b**")
-        tf.logging.debug(
-            "tokens: %s"
-            % " ".join(tokens_b)
-        )
+        tf.logging.debug("tokens: %s" % " ".join(tokens_b))
         tf.logging.debug(
             "input_ids: %s" % " ".join([str(x) for x in input_ids_b])
         )
@@ -124,18 +118,14 @@ def file_based_input_fn_builder(
     labeltype = tf.float32
 
     name_to_features = {
-        "input_ids_a": tf.FixedLenFeature(
-            [seq_length * multiple], tf.int64
-        ),
+        "input_ids_a": tf.FixedLenFeature([seq_length * multiple], tf.int64),
         "attention_mask_a": tf.FixedLenFeature(
             [seq_length * multiple], tf.int64
         ),
         "token_type_ids_a": tf.FixedLenFeature(
             [seq_length * multiple], tf.int64
         ),
-        "input_ids_b": tf.FixedLenFeature(
-            [seq_length * multiple], tf.int64
-        ),
+        "input_ids_b": tf.FixedLenFeature([seq_length * multiple], tf.int64),
         "attention_mask_b": tf.FixedLenFeature(
             [seq_length * multiple], tf.int64
         ),
@@ -241,18 +231,14 @@ def file_based_convert_examples_to_features(
         )
 
         features = collections.OrderedDict()
-        features["input_ids_a"] = create_int_feature(
-            feature.input_ids_a
-        )
+        features["input_ids_a"] = create_int_feature(feature.input_ids_a)
         features["attention_mask_a"] = create_int_feature(
             feature.attention_mask_a
         )
         features["token_type_ids_a"] = create_int_feature(
             feature.token_type_ids_a
         )
-        features["input_ids_b"] = create_int_feature(
-            feature.input_ids_b
-        )
+        features["input_ids_b"] = create_int_feature(feature.input_ids_b)
         features["attention_mask_b"] = create_int_feature(
             feature.attention_mask_b
         )
