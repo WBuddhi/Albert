@@ -1,3 +1,4 @@
 /model.png
 *.pyc
 /__pycache__/
+*.swp
