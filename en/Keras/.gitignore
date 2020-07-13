@@ -3,3 +3,5 @@
 /__pycache__/
 *.swp
 /results_20200709-114423.csv
+/albert_module_hub_v2
+/bert_module_hub_v2
