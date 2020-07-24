@@ -16,7 +16,6 @@ from optimizer.create_optimizers import (
 from utils import read_yaml_config, import_fn
 from scipy.stats import pearsonr
 
-
 def get_training_strategy(use_tpu: bool, tpu_name: str):
     """
     Get training strategy.
@@ -44,7 +43,7 @@ def train_model(config: dict):
         config (dict): config
     """
 
-    tf.enable_eager_execution()
+    #tf.enable_eager_execution()
     logging.set_verbosity(tf.logging.DEBUG)
     logging.propagate = False
 

@@ -41,7 +41,11 @@ class PretrainedModelAvgPooling(tf.keras.Model):
         Returns:
             tf.Tensor:
         """
-        seq_output, _ = self.pretrained_layer(inputs)
+        output = self.pretrained_layer(inputs)
+        if len(output) < 2:
+            seq_output = output
+        else:
+            seq_output = output[0]
         attention_mask = inputs["attention_mask"]
         output = self.avg_masked_pooling_layer(seq_output, mask=attention_mask)
         if self.use_dropout and training:
